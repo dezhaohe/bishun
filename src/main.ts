@@ -77,6 +77,17 @@ app.innerHTML = `
   </div>
 
   <div id="loading" class="loading">正在加载笔顺数据…</div>
+
+  <div id="install-banner" class="install-banner" hidden>
+    <div class="install-text">
+      <strong>📲 添加到主屏幕，断网也能查</strong>
+      <span id="install-steps"></span>
+    </div>
+    <div class="install-actions">
+      <button id="install-btn" class="action-btn install-primary" hidden>一键安装</button>
+      <button id="install-dismiss" class="action-btn">知道了</button>
+    </div>
+  </div>
 `;
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
@@ -256,6 +267,54 @@ quizToggle.addEventListener('change', () => {
   saveSettings(settings);
   quizBtn.hidden = !settings.quizEnabled || detail.hidden;
 });
+
+// ---------- 添加到主屏幕引导 ----------
+const INSTALL_DISMISS_KEY = 'bishun-install-dismissed';
+const installBanner = $('#install-banner');
+const installBtn = $<HTMLButtonElement>('#install-btn');
+let deferredInstall: (Event & { prompt: () => Promise<void> }) | null = null;
+
+function isStandalone(): boolean {
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (navigator as unknown as { standalone?: boolean }).standalone === true
+  );
+}
+
+function setupInstallBanner() {
+  if (isStandalone() || localStorage.getItem(INSTALL_DISMISS_KEY)) return;
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+  const steps = isIOS
+    ? '用 Safari 打开 → 点底部 分享按钮 ⬆️ → 选「添加到主屏幕」'
+    : isAndroid
+      ? '点浏览器菜单 ⋮ → 选「安装应用」或「添加到主屏幕」'
+      : '手机浏览器打开本页，按提示添加到主屏幕；电脑 Chrome 可点地址栏的安装图标';
+  $('#install-steps').textContent = steps;
+  installBanner.hidden = false;
+}
+
+// Android Chrome 等支持原生安装提示时，显示"一键安装"
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstall = e as typeof deferredInstall;
+  installBtn.hidden = false;
+});
+
+installBtn.addEventListener('click', async () => {
+  if (!deferredInstall) return;
+  await deferredInstall.prompt();
+  deferredInstall = null;
+  installBanner.hidden = true;
+});
+
+$('#install-dismiss').addEventListener('click', () => {
+  localStorage.setItem(INSTALL_DISMISS_KEY, '1');
+  installBanner.hidden = true;
+});
+
+setupInstallBanner();
 
 // ---------- Toast ----------
 let toastTimer: number | undefined;
