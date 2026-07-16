@@ -40,6 +40,12 @@ Requires Node.js ≥ 18.
 
 To deploy your fork to GitHub Pages: change the repo URL in the `deploy` script in `package.json`, then run `npm run deploy`.
 
+**Trimming the character set**: the full standard table (~19.5MB of data) is bundled by default. The table is ordered by tier (Level 1 → 2 → 3), so set `CHAR_LIMIT` at build time to trim it — e.g. keep only the 3,500 Level-1 common characters (~9MB):
+
+```bash
+CHAR_LIMIT=3500 npm run build
+```
+
 ## 🙏 Data sources & credits
 
 | Project | Used for | License |

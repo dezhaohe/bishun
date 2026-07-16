@@ -54,7 +54,11 @@ Fork 本仓库后想部署到自己的 GitHub Pages：把 `package.json` 里 `de
 └── vite.config.ts          # Vite + vite-plugin-pwa 配置
 ```
 
-调整字库范围：修改 `scripts/build-data.mjs` 读取的字表即可。
+**裁剪字库**：默认打包全量规范字（约 19.5MB）。字表按一级 → 二级 → 三级排序，构建时设置 `CHAR_LIMIT` 即可裁剪，例如只保留 3500 个一级常用字（数据降到约 9MB）：
+
+```bash
+CHAR_LIMIT=3500 npm run build
+```
 
 ## 🙏 数据来源与致谢
 

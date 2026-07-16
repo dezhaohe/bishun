@@ -6,7 +6,10 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
-const chars = JSON.parse(readFileSync(join(root, 'scripts/gsc-chars.json'), 'utf8'));
+// 默认全量规范字表；设置 CHAR_LIMIT 可裁剪（字表按一级→二级→三级排序，
+// 如 CHAR_LIMIT=3500 只保留一级常用字，数据体积从 ~19.5MB 降到 ~9MB）
+const limit = Number(process.env.CHAR_LIMIT) || Infinity;
+const chars = JSON.parse(readFileSync(join(root, 'scripts/gsc-chars.json'), 'utf8')).slice(0, limit);
 const dataDir = join(root, 'node_modules/hanzi-writer-data');
 const outFile = join(root, 'public/data/strokes.json');
 
