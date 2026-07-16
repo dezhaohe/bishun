@@ -1,0 +1,26 @@
+{
+  "name": "bishun",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "predev": "node scripts/build-data.mjs",
+    "dev": "vite",
+    "prebuild": "node scripts/build-data.mjs",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "deploy": "npm run build && cd dist && git init -q -b gh-pages && git add -A && git -c user.name=dezhaohe -c user.email=dezhaohe@users.noreply.github.com commit -q -m deploy && git push --force https://github.com/dezhaohe/bishun.git gh-pages && cd .. && rm -rf dist/.git"
+  },
+  "dependencies": {
+    "cnchar": "^3.2.6",
+    "cnchar-order": "^3.2.6",
+    "cnchar-radical": "^3.2.6",
+    "hanzi-writer": "^3.7.2"
+  },
+  "devDependencies": {
+    "hanzi-writer-data": "^2.0.1",
+    "typescript": "^5.6.0",
+    "vite": "^5.4.0",
+    "vite-plugin-pwa": "^0.20.5"
+  }
+}
