@@ -2,11 +2,12 @@ import HanziWriter from 'hanzi-writer';
 import cnchar from 'cnchar';
 import order from 'cnchar-order';
 import radical from 'cnchar-radical';
+import trad from 'cnchar-trad';
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 
 registerSW({ immediate: true });
-cnchar.use(order, radical);
+cnchar.use(order, radical, trad);
 
 type StrokeMap = Record<string, object>;
 
@@ -28,6 +29,8 @@ function saveSettings(s: Settings) {
 
 const settings = loadSettings();
 let strokeData: StrokeMap = {};
+let tradIndex = new Set<string>();
+const TRAD_KEY = 'bishun-trad-downloaded';
 let writer: HanziWriter | null = null;
 let currentChar = '';
 let quizMode = false;
@@ -78,6 +81,17 @@ app.innerHTML = `
 
   <div id="loading" class="loading">正在加载笔顺数据…</div>
 
+  <div id="trad-prompt" class="install-banner" hidden>
+    <div class="install-text">
+      <strong id="trad-prompt-title"></strong>
+      <span>该字不在基础字库中。可下载繁体扩展字库（2708 个繁体/生僻字，约 10MB，仅需一次，下载后离线可用）。</span>
+    </div>
+    <div class="install-actions">
+      <button id="trad-download" class="action-btn install-primary">下载扩展字库</button>
+      <button id="trad-cancel" class="action-btn">暂不</button>
+    </div>
+  </div>
+
   <div id="install-banner" class="install-banner" hidden>
     <div class="install-text">
       <strong>📲 添加到主屏幕，断网也能查</strong>
@@ -107,10 +121,29 @@ speedBtn.textContent = speedLabel();
 quizToggle.checked = settings.quizEnabled;
 
 // ---------- 数据加载 ----------
-fetch(`${import.meta.env.BASE_URL}data/strokes.json`)
-  .then((r) => r.json())
-  .then((data: StrokeMap) => {
+const dataUrl = (name: string) => `${import.meta.env.BASE_URL}data/${name}`;
+
+async function fetchTradPack(): Promise<StrokeMap> {
+  const r = await fetch(dataUrl('strokes-trad.json'));
+  if (!r.ok) throw new Error(String(r.status));
+  return r.json();
+}
+
+Promise.all([
+  fetch(dataUrl('strokes.json')).then((r) => r.json()),
+  fetch(dataUrl('trad-index.json')).then((r) => r.json()).catch(() => ''),
+])
+  .then(async ([data, index]: [StrokeMap, string]) => {
     strokeData = data;
+    tradIndex = new Set(index);
+    // 下载过扩展包的用户，启动时自动加载（Service Worker 已缓存，离线可用）
+    if (localStorage.getItem(TRAD_KEY)) {
+      try {
+        Object.assign(strokeData, await fetchTradPack());
+      } catch {
+        /* 下次启动再试 */
+      }
+    }
     loading.hidden = true;
     renderChars();
   })
@@ -140,18 +173,25 @@ function renderChars() {
     btn.className = 'char-card';
     btn.textContent = ch;
     const available = ch in strokeData;
-    if (!available) {
+    const inTradPack = !available && tradIndex.has(ch);
+    if (inTradPack) {
+      btn.classList.add('trad');
+      btn.title = '可下载繁体扩展字库';
+    } else if (!available) {
       btn.classList.add('unavailable');
       btn.title = '暂无笔顺数据';
     }
     btn.addEventListener('click', () => {
-      if (!available) {
+      if (ch in strokeData) {
+        // 已可查（含下载扩展包后的情况）
+        document.querySelectorAll('.char-card.active').forEach((el) => el.classList.remove('active'));
+        btn.classList.add('active');
+        showDetail(ch);
+      } else if (tradIndex.has(ch)) {
+        showTradPrompt(ch);
+      } else {
         showToast(`「${ch}」暂无笔顺数据（生僻字）`);
-        return;
       }
-      document.querySelectorAll('.char-card.active').forEach((el) => el.classList.remove('active'));
-      btn.classList.add('active');
-      showDetail(ch);
     });
     charGrid.appendChild(btn);
   }
@@ -266,6 +306,42 @@ quizToggle.addEventListener('change', () => {
   settings.quizEnabled = quizToggle.checked;
   saveSettings(settings);
   quizBtn.hidden = !settings.quizEnabled || detail.hidden;
+});
+
+// ---------- 繁体扩展字库（按需下载） ----------
+const tradPrompt = $('#trad-prompt');
+const tradDownloadBtn = $<HTMLButtonElement>('#trad-download');
+let tradPendingChar = '';
+
+function showTradPrompt(ch: string) {
+  tradPendingChar = ch;
+  $('#trad-prompt-title').textContent = `「${ch}」是繁体字或生僻字`;
+  $('#install-banner').hidden = true; // 避免与安装引导条重叠
+  tradPrompt.hidden = false;
+}
+
+tradDownloadBtn.addEventListener('click', async () => {
+  tradDownloadBtn.disabled = true;
+  tradDownloadBtn.textContent = '下载中…';
+  try {
+    Object.assign(strokeData, await fetchTradPack());
+    localStorage.setItem(TRAD_KEY, '1');
+    tradPrompt.hidden = true;
+    renderChars();
+    if (tradPendingChar in strokeData) {
+      showDetail(tradPendingChar);
+      showToast('扩展字库已就绪，之后离线也能查 ✅');
+    }
+  } catch {
+    showToast('下载失败，请检查网络后重试');
+  } finally {
+    tradDownloadBtn.disabled = false;
+    tradDownloadBtn.textContent = '下载扩展字库';
+  }
+});
+
+$('#trad-cancel').addEventListener('click', () => {
+  tradPrompt.hidden = true;
 });
 
 // ---------- 添加到主屏幕引导 ----------

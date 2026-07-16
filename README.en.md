@@ -14,6 +14,7 @@ Unlike stroke-order websites that require one online query per character, this t
 - **Tracing practice** (optional, off by default): trace each stroke with your finger; wrong strokes prompt a retry
 - **Fully offline**: the Service Worker precaches ~20MB of stroke data (~8MB gzipped, downloaded once)
 - **Coverage**: 6,866 of the 8,105 characters in China's Table of General Standard Chinese Characters — >99.9% of everyday text
+- **On-demand traditional pack**: tapping a traditional character offers a one-tap download of the extension pack (2,708 traditional/rare characters, ~10MB), which then also works offline — keeping the first-load experience light
 
 ## 📱 Install on your phone
 

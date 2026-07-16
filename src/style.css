@@ -116,6 +116,20 @@ body {
   background: transparent;
   border-style: dashed;
 }
+.char-card.trad {
+  border-style: dashed;
+  border-color: var(--accent);
+  color: var(--ink);
+  position: relative;
+}
+.char-card.trad::after {
+  content: '⇣';
+  position: absolute;
+  right: 3px;
+  bottom: 1px;
+  font-size: 11px;
+  color: var(--accent);
+}
 
 .empty-hint {
   text-align: center;
@@ -246,6 +260,12 @@ body {
   background: var(--accent);
   color: #fff;
   border-color: var(--accent);
+}
+#trad-prompt {
+  z-index: 11;
+}
+.install-banner[hidden] {
+  display: none;
 }
 
 .toast {
