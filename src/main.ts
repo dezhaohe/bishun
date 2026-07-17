@@ -125,14 +125,13 @@ app.innerHTML = `
   </div>
 
   <section class="input-area">
-    <textarea id="text-input" rows="2" placeholder="请输入一个字或一段话让我识别吧。使用语音输入会更快哦 🎤" autocomplete="off"></textarea>
+    <textarea id="text-input" rows="2" placeholder="请输入一个字或一段话让我识别吧。使用语音输入会更快哦 🎤" autocomplete="off" autofocus></textarea>
   </section>
 
   <section id="char-grid" class="char-grid"></section>
   <p id="empty-hint" class="empty-hint">输入文字后，点击任意字查看笔顺 ✍️</p>
   <div id="empty-demo" class="empty-demo" hidden>
     <img class="demo-gif" src="${import.meta.env.BASE_URL}demo-bi.gif" width="320" height="320" alt="点击文字查看笔顺动画演示" />
-    <p class="empty-demo-caption">👆 点这样的字，就能看到笔顺动画啦</p>
   </div>
 
   <div id="detail" class="detail" hidden>
@@ -208,6 +207,8 @@ const quizHint = $('#quiz-hint');
 const speedSelect = $<HTMLSelectElement>('#speed-select');
 
 speedSelect.value = String(settings.speed);
+// 抢占输入焦点，光标闪烁引导用户直接开始输入（innerHTML 插入的 autofocus 属性不会自动生效，需手动 focus）
+textInput.focus();
 quizToggle.checked = settings.quizEnabled;
 
 // ---------- 数据加载 ----------
@@ -695,7 +696,7 @@ $('#add-home-btn').addEventListener('click', async () => {
   setupInstallBanner();
 });
 
-setupInstallBanner();
+// 不在首页加载时自动打扰用户，只在设置里点击"添加到主屏幕"时才触发引导条
 
 // ---------- Toast ----------
 let toastTimer: number | undefined;

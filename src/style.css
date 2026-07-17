@@ -199,6 +199,11 @@ body {
   color: var(--ink);
   resize: vertical;
   outline: none;
+  caret-color: var(--accent);
+}
+.input-area textarea::placeholder {
+  /* 比正文更淡，一眼能分辨是提示语而不是已填内容 */
+  color: #c1b9ae;
 }
 .input-area textarea:focus {
   border-color: var(--accent);
@@ -319,11 +324,6 @@ body {
   border-radius: 8px;
   display: block;
   margin: 0 auto;
-}
-.empty-demo-caption {
-  margin-top: 12px;
-  font-size: 14px;
-  color: var(--muted);
 }
 
 .stroke-names {
