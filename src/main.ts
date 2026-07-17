@@ -53,10 +53,11 @@ app.innerHTML = `
       <input type="checkbox" id="quiz-toggle" />
     </label>
     <p class="setting-hint">开启后，字卡详情中会出现"练习"按钮，可以用手指描写笔画。</p>
+    <button id="add-home-btn" class="action-btn add-home-btn">📲 添加到主屏幕（断网也能查）</button>
   </div>
 
   <section class="input-area">
-    <textarea id="text-input" rows="3" placeholder="粘贴或输入一段话，自动识别其中的汉字…" autocomplete="off"></textarea>
+    <textarea id="text-input" rows="3" placeholder="粘贴或输入一段话，自动识别其中的汉字。使用语音输入会更快哦 🎤" autocomplete="off"></textarea>
   </section>
 
   <section id="char-grid" class="char-grid"></section>
@@ -399,6 +400,23 @@ installBtn.addEventListener('click', async () => {
 $('#install-dismiss').addEventListener('click', () => {
   localStorage.setItem(INSTALL_DISMISS_KEY, '1');
   installBanner.hidden = true;
+});
+
+// 设置里的常驻入口：误点过"知道了"的用户也能再次唤起引导
+$('#add-home-btn').addEventListener('click', async () => {
+  if (isStandalone()) {
+    showToast('已经是主屏幕应用啦 🎉');
+    return;
+  }
+  if (deferredInstall) {
+    // 支持原生安装提示的浏览器直接弹安装框
+    await deferredInstall.prompt();
+    deferredInstall = null;
+    return;
+  }
+  localStorage.removeItem(INSTALL_DISMISS_KEY);
+  $('#settings-panel').hidden = true;
+  setupInstallBanner();
 });
 
 setupInstallBanner();
