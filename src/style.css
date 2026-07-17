@@ -289,7 +289,8 @@ body {
   margin: 12px auto;
   width: fit-content;
 }
-#writer-target {
+#writer-target,
+.mizige {
   position: relative;
   border: 2px solid var(--accent);
   border-radius: 8px;
@@ -303,8 +304,24 @@ body {
   height: min(80vw, 320px);
   touch-action: none;
 }
-#writer-target svg {
+#writer-target svg,
+.mizige svg {
   display: block;
+}
+
+.empty-demo {
+  text-align: center;
+  margin-top: 28px;
+}
+.demo-writer-box {
+  width: 120px !important;
+  height: 120px !important;
+  margin: 0 auto;
+}
+.empty-demo-caption {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--muted);
 }
 
 .stroke-names {
@@ -330,6 +347,19 @@ body {
 }
 .action-btn:active {
   background: var(--border);
+}
+
+#quiz-btn {
+  background: #fff;
+  border: 1px solid var(--accent);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: 0 2px 6px rgba(192, 57, 43, 0.18);
+}
+#quiz-btn:active {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 1px 3px rgba(192, 57, 43, 0.25);
 }
 
 .loading {
@@ -372,7 +402,11 @@ body {
 }
 .install-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 10px;
+}
+.install-actions .action-btn {
+  flex: 1 1 100px;
 }
 .install-primary {
   background: var(--accent);

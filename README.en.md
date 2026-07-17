@@ -26,8 +26,10 @@ Unlike stroke-order websites that require one online query per character, this t
 ## 📱 Install on your phone
 
 1. Open https://dezhaohe.github.io/bishun/ in your mobile browser
-2. iOS Safari: Share → **Add to Home Screen**; Android Chrome: Menu → **Install app**
+2. iOS Safari: Share → **Add to Home Screen**; Android: the app detects your phone's brand (Xiaomi/OPPO/vivo/Huawei/Samsung/…) and shows menu steps for its default browser
 3. Launch from the home-screen icon — works without a network connection (do the first visit on Wi-Fi)
+
+> Opened inside WeChat/QQ/Weibo etc.? Adding to home screen isn't possible from an in-app browser (a platform limitation) — the app will offer a "copy link" button so you can paste the URL into a real browser (Safari/Chrome/…) and continue there.
 
 ## 🚀 Development
 

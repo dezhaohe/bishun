@@ -125,11 +125,15 @@ app.innerHTML = `
   </div>
 
   <section class="input-area">
-    <textarea id="text-input" rows="3" placeholder="请输入一个字或一段话让我识别吧。使用语音输入会更快哦 🎤" autocomplete="off"></textarea>
+    <textarea id="text-input" rows="2" placeholder="请输入一个字或一段话让我识别吧。使用语音输入会更快哦 🎤" autocomplete="off"></textarea>
   </section>
 
   <section id="char-grid" class="char-grid"></section>
   <p id="empty-hint" class="empty-hint">输入文字后，点击任意字查看笔顺 ✍️</p>
+  <div id="empty-demo" class="empty-demo" hidden>
+    <div id="demo-writer" class="mizige demo-writer-box"></div>
+    <p class="empty-demo-caption">👆 点这样的字，就能看到笔顺动画啦</p>
+  </div>
 
   <div id="detail" class="detail" hidden>
     <div class="detail-head">
@@ -181,10 +185,11 @@ app.innerHTML = `
 
   <div id="install-banner" class="install-banner" hidden>
     <div class="install-text">
-      <strong>📲 添加到主屏幕，断网也能查</strong>
+      <strong id="install-title">📲 添加到主屏幕，断网也能查</strong>
       <span id="install-steps"></span>
     </div>
     <div class="install-actions">
+      <button id="copy-link-btn" class="action-btn">🔗 复制链接</button>
       <button id="install-btn" class="action-btn install-primary" hidden>一键安装</button>
       <button id="install-dismiss" class="action-btn">知道了</button>
     </div>
@@ -238,6 +243,7 @@ Promise.all([
     const q = new URLSearchParams(location.search).get('q');
     if (q && !textInput.value) textInput.value = q;
     renderChars();
+    if (!textInput.value) maybeShowDemo();
   })
   .catch(() => {
     loading.textContent = '笔顺数据加载失败，请刷新重试';
@@ -258,8 +264,9 @@ function extractChars(text: string): string[] {
 
 function renderChars() {
   const chars = extractChars(textInput.value);
+  if (chars.length > 0) hideDemo();
   charGrid.innerHTML = '';
-  emptyHint.hidden = chars.length > 0;
+  emptyHint.hidden = chars.length > 0 || !$('#empty-demo').hidden;
   const cardOf = new Map<string, HTMLButtonElement>();
   for (const ch of chars) {
     const btn = document.createElement('button');
@@ -308,9 +315,38 @@ function renderChars() {
 
 let renderTimer: number | undefined;
 textInput.addEventListener('input', () => {
+  hideDemo(); // 一开始打字就收起首次演示，不用等 debounce
   clearTimeout(renderTimer);
   renderTimer = window.setTimeout(renderChars, 200);
 });
+
+// ---------- 首次访问演示：播放一次"笔"字的笔顺，教用户点字看笔顺 ----------
+const DEMO_SEEN_KEY = 'bishun-demo-seen';
+const emptyDemo = $('#empty-demo');
+
+function hideDemo() {
+  if (!emptyDemo.hidden) emptyDemo.hidden = true;
+}
+
+function maybeShowDemo() {
+  if (localStorage.getItem(DEMO_SEEN_KEY)) return;
+  if (!('笔' in strokeData)) return;
+  // 标记为已展示：确保无论刷新与否，这个演示一生只播一次
+  localStorage.setItem(DEMO_SEEN_KEY, '1');
+  emptyDemo.hidden = false;
+  emptyHint.hidden = true;
+  const target = $('#demo-writer');
+  const demoWriter = HanziWriter.create(target, '笔', {
+    width: 120,
+    height: 120,
+    padding: 8,
+    strokeColor: '#2c3e50',
+    radicalColor: '#c0392b',
+    showCharacter: false,
+    charDataLoader: (char, onComplete) => onComplete(strokeData[char] as never),
+  });
+  window.setTimeout(() => demoWriter.animateCharacter(), 400);
+}
 
 // ---------- 详情与动画 ----------
 function showDetail(ch: string, opts: { scroll?: boolean } = {}) {
@@ -458,7 +494,7 @@ feedbackSubmit.addEventListener('click', async () => {
     if (!r.ok) throw new Error(String(r.status));
     // 先让用户看到成功状态，再返回设置页，避免"不知道有没有提交上"
     feedbackSubmit.textContent = '✅ 提交成功，谢谢你的反馈！';
-    await new Promise((res) => setTimeout(res, 1200));
+    await new Promise((res) => setTimeout(res, 2500));
     feedbackText.value = '';
     feedbackContact.value = '';
     feedbackPage.hidden = true;
@@ -557,6 +593,29 @@ function isStandalone(): boolean {
   );
 }
 
+// 微信/QQ/微博等 App 内置浏览器无法添加到主屏幕，必须先跳到系统浏览器
+function inAppBrowserName(): string | null {
+  const ua = navigator.userAgent;
+  if (/MicroMessenger/i.test(ua)) return '微信';
+  if (/\bQQ\//i.test(ua) && !/MQQBrowser/i.test(ua)) return 'QQ';
+  if (/Weibo/i.test(ua)) return '微博';
+  if (/DingTalk/i.test(ua)) return '钉钉';
+  if (/AlipayClient/i.test(ua)) return '支付宝';
+  if (/(toutiao|bytedance|musical_ly|aweme)/i.test(ua)) return '今日头条/抖音';
+  return null;
+}
+
+// Android 品牌繁多，各家默认浏览器菜单位置不同，尽量给出对应提示
+function androidBrowserSteps(): string {
+  const ua = navigator.userAgent;
+  if (/SamsungBrowser/i.test(ua)) return '点击地址栏右侧菜单 ≡ → 选「添加页面至」→「主屏幕」（三星浏览器）';
+  if (/HuaweiBrowser|HUAWEI|HONOR/i.test(ua)) return '点击右下角菜单 ⋯ → 选「添加到桌面」（华为浏览器）';
+  if (/MiuiBrowser|XIAOMI|REDMI|POCO/i.test(ua)) return '点击右下角菜单 ⋯ → 选「添加到桌面」（小米浏览器）';
+  if (/HeyTapBrowser|OppoBrowser|\bOPPO\b|CPH\d{4}/i.test(ua)) return '点击右下角菜单 ⋯ → 选「添加到桌面」（OPPO 浏览器）';
+  if (/VivoBrowser|\bvivo\b/i.test(ua)) return '点击右下角菜单 ⋯ → 选「添加到桌面」（vivo 浏览器）';
+  return '点浏览器菜单 ⋮ → 选「安装应用」或「添加到主屏幕」';
+}
+
 function setupInstallBanner() {
   // ?clean 用于截图/嵌入场景，不显示安装引导
   if (new URLSearchParams(location.search).has('clean')) return;
@@ -564,14 +623,52 @@ function setupInstallBanner() {
   const ua = navigator.userAgent;
   const isIOS = /iPhone|iPad|iPod/.test(ua);
   const isAndroid = /Android/.test(ua);
-  const steps = isIOS
-    ? '用 Safari 打开 → 点底部 分享按钮 ⬆️ → 选「添加到主屏幕」'
-    : isAndroid
-      ? '点浏览器菜单 ⋮ → 选「安装应用」或「添加到主屏幕」'
-      : '手机浏览器打开本页，按提示添加到主屏幕；电脑 Chrome 可点地址栏的安装图标';
-  $('#install-steps').textContent = steps;
+  const inApp = inAppBrowserName();
+
+  const copyBtn = $<HTMLButtonElement>('#copy-link-btn');
+  if (inApp) {
+    // 当前在 App 内置浏览器里，添加到主屏幕的操作走不通，引导用户先跳出/复制链接
+    $('#install-title').textContent = `📲 当前在「${inApp}」中打开`;
+    $('#install-steps').textContent =
+      `无法直接添加到主屏幕。点右上角「···」或「≡」选择"在浏览器打开"；如果没有这个选项，复制链接后到系统浏览器（如 Safari / Chrome）里粘贴打开即可。`;
+    copyBtn.classList.add('install-primary');
+  } else {
+    $('#install-title').textContent = '📲 添加到主屏幕，断网也能查';
+    const steps = isIOS
+      ? '用 Safari 打开 → 点底部 分享按钮 ⬆️ → 选「添加到主屏幕」'
+      : isAndroid
+        ? androidBrowserSteps()
+        : '手机浏览器打开本页，按提示添加到主屏幕；电脑 Chrome 可点地址栏的安装图标';
+    $('#install-steps').textContent = steps;
+    copyBtn.classList.remove('install-primary');
+  }
   installBanner.hidden = false;
 }
+
+// 复制本页链接（去掉 ?q=/?clean 等临时参数），方便在 App 内浏览器里跳转到系统浏览器打开
+async function copyPageUrl() {
+  const url = `${location.origin}${location.pathname}`;
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast('链接已复制，去浏览器粘贴打开吧 📋');
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = url;
+    ta.style.position = 'fixed';
+    ta.style.left = '-9999px';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand('copy');
+      showToast('链接已复制，去浏览器粘贴打开吧 📋');
+    } catch {
+      showToast('复制失败，请手动复制地址栏链接');
+    }
+    ta.remove();
+  }
+}
+
+$('#copy-link-btn').addEventListener('click', copyPageUrl);
 
 // Android Chrome 等支持原生安装提示时，显示"一键安装"
 window.addEventListener('beforeinstallprompt', (e) => {
