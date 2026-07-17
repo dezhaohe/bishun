@@ -312,6 +312,9 @@ body {
   margin-top: 24px;
 }
 .demo-gif {
+  /* 尺寸与 #writer-target（真实笔顺渲染框）保持一致，让演示和实际使用观感统一 */
+  width: min(80vw, 320px);
+  height: min(80vw, 320px);
   border: 2px solid var(--accent);
   border-radius: 8px;
   display: block;
@@ -433,6 +436,10 @@ body {
   pointer-events: none;
   transition: opacity 0.2s, transform 0.2s;
   white-space: nowrap;
+  z-index: 1000;
+  max-width: calc(100vw - 32px);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .toast.show {
   opacity: 1;

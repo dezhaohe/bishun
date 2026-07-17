@@ -9,7 +9,7 @@ import { join } from 'node:path';
 
 const CHROME = '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome';
 const BASE = 'http://localhost:4173';
-const SIZE = 240; // GIF 像素尺寸（正方形）
+const SIZE = 320; // 与应用内 #writer-target 的最大尺寸一致（min(80vw, 320px)）
 const OUT = 'public/demo-bi.gif';
 const FRAME_INTERVAL = 70; // ms，约 14fps
 

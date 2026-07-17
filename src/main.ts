@@ -131,7 +131,7 @@ app.innerHTML = `
   <section id="char-grid" class="char-grid"></section>
   <p id="empty-hint" class="empty-hint">输入文字后，点击任意字查看笔顺 ✍️</p>
   <div id="empty-demo" class="empty-demo" hidden>
-    <img class="demo-gif" src="${import.meta.env.BASE_URL}demo-bi.gif" width="120" height="120" alt="点击文字查看笔顺动画演示" />
+    <img class="demo-gif" src="${import.meta.env.BASE_URL}demo-bi.gif" width="320" height="320" alt="点击文字查看笔顺动画演示" />
     <p class="empty-demo-caption">👆 点这样的字，就能看到笔顺动画啦</p>
   </div>
 
@@ -708,6 +708,9 @@ function showToast(msg: string) {
   }
   toast.textContent = msg;
   toast.classList.add('show');
+  // 有底部悬浮提示条（添加到主屏幕/扩展字库）时，把 toast 挪到条上方，避免被挡住
+  const banner = [installBanner, tradPrompt].find((el) => el && !el.hidden);
+  toast.style.bottom = banner ? `${window.innerHeight - banner.getBoundingClientRect().top + 12}px` : '';
   clearTimeout(toastTimer);
   toastTimer = window.setTimeout(() => toast!.classList.remove('show'), 2000);
 }
