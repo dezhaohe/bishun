@@ -1,6 +1,6 @@
 // 从 hanzi-writer-data 生成两个数据包：
 //  - strokes.json      基础包：《通用规范汉字表》中有数据的字（随应用预缓存）
-//  - strokes-trad.json 扩展包：其余的字（主要是繁体/生僻字），用户按需下载
+//  - strokes-trad.json 扩展包：其余的字（繁体、粤语和生僻字），用户按需下载
 //  - trad-index.json   扩展包字表索引（几 KB，随应用预缓存，用于识别"可下载"的字）
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';

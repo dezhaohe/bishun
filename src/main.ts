@@ -88,7 +88,7 @@ app.innerHTML = `
       <button id="trad-pack-btn" class="setting-item setting-action">
         <span class="setting-label">
           <span>扩展字库</span>
-          <small id="trad-pack-status">未下载 · 含繁体与粤语字，约 10MB</small>
+          <small id="trad-pack-status">未下载 · 含繁体、粤语和生僻字，约 10MB</small>
         </span>
         <span class="chevron">›</span>
       </button>
@@ -110,7 +110,7 @@ app.innerHTML = `
       <div class="setting-item about-text">
         <span class="setting-label">
           <span>笔顺随身查</span>
-          <small>离线汉字笔顺查询工具。输入一段话，点任意字查看笔顺动画、拼音、笔画和部首结构；支持描红练习。基础字库覆盖《通用规范汉字表》常用字，繁体/粤语字可按需下载；首次打开后断网也能用，建议添加到主屏幕当作 App 使用。</small>
+          <small>离线汉字笔顺查询工具。输入一段话，点任意字查看笔顺动画、拼音、笔画和部首结构；支持描红练习。基础字库覆盖《通用规范汉字表》常用字，繁体、粤语和生僻字可按需下载；首次打开后断网也能用，建议添加到主屏幕当作 App 使用。</small>
         </span>
       </div>
       <a class="setting-item setting-action" href="https://github.com/dezhaohe/bishun" target="_blank" rel="noopener">
@@ -171,7 +171,7 @@ app.innerHTML = `
   <div id="trad-prompt" class="install-banner" hidden>
     <div class="install-text">
       <strong id="trad-prompt-title"></strong>
-      <span>该字不在基础字库中。可下载扩展字库（2724 个繁体、粤语及生僻字，约 10MB，仅需一次，下载后离线可用）。</span>
+      <span>该字不在基础字库中。可下载扩展字库（2724 个繁体、粤语和生僻字，约 10MB，仅需一次，下载后离线可用）。</span>
     </div>
     <div class="install-actions">
       <button id="trad-download" class="action-btn install-primary">下载扩展字库</button>
@@ -269,7 +269,7 @@ function renderChars() {
     const inTradPack = !available && tradIndex.has(ch);
     if (inTradPack) {
       btn.classList.add('trad');
-      btn.title = '可下载繁体扩展字库';
+      btn.title = '可下载扩展字库查看';
     } else if (!available) {
       btn.classList.add('unavailable');
       btn.title = '暂无笔顺数据';
@@ -470,7 +470,7 @@ feedbackSubmit.addEventListener('click', async () => {
   }
 });
 
-// ---------- 繁体扩展字库（按需下载） ----------
+// ---------- 扩展字库（繁体、粤语和生僻字，按需下载） ----------
 const tradPrompt = $('#trad-prompt');
 const tradDownloadBtn = $<HTMLButtonElement>('#trad-download');
 const tradStatusEl = $('#trad-pack-status');
@@ -479,8 +479,8 @@ let tradDownloading = false;
 
 function updateTradStatus() {
   tradStatusEl.textContent = localStorage.getItem(TRAD_KEY)
-    ? `已下载 · ${tradIndex.size} 个繁体/粤语字，点击可删除`
-    : '未下载 · 含繁体与粤语字，约 10MB，点击下载';
+    ? `已下载 · ${tradIndex.size} 个繁体、粤语和生僻字，点击可删除`
+    : '未下载 · 含繁体、粤语和生僻字，约 10MB，点击下载';
 }
 
 // 共享的下载逻辑：字卡提示和设置项两个入口都走这里
@@ -503,7 +503,7 @@ async function doDownloadTradPack(): Promise<boolean> {
 
 function showTradPrompt(ch: string) {
   tradPendingChar = ch;
-  $('#trad-prompt-title').textContent = `「${ch}」是繁体字或生僻字`;
+  $('#trad-prompt-title').textContent = `「${ch}」需下载扩展字库`;
   $('#install-banner').hidden = true; // 避免与安装引导条重叠
   tradPrompt.hidden = false;
 }
@@ -525,7 +525,7 @@ tradDownloadBtn.addEventListener('click', async () => {
 // 设置里的扩展字库入口：未下载 → 下载；已下载 → 可删除（删除后随时可重新下载）
 $('#trad-pack-btn').addEventListener('click', async () => {
   if (localStorage.getItem(TRAD_KEY)) {
-    if (confirm('删除扩展字库？删除后繁体/粤语字将不可查，可随时重新下载。')) {
+    if (confirm('删除扩展字库？删除后繁体、粤语和生僻字将不可查，可随时重新下载。')) {
       localStorage.removeItem(TRAD_KEY);
       await caches.delete('bishun-trad-pack').catch(() => {});
       location.reload();
