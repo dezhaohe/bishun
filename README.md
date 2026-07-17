@@ -4,6 +4,12 @@
 
 [English](./README.en.md) | **在线体验：https://dezhaohe.github.io/bishun/**
 
+<p align="center">
+  <img src="docs/screenshot-main.png" width="260" alt="整段识别，点字看笔顺动画" />
+  <img src="docs/screenshot-canto.png" width="260" alt="繁体/粤语字按需下载" />
+  <img src="docs/screenshot-settings.png" width="260" alt="设置" />
+</p>
+
 不同于逐字联网查询的笔顺网站，本工具把整段文本一次拆成字卡，点哪个字就看哪个字的笔顺，**首次打开后完全离线可用**，适合添加到手机主屏幕当作独立应用。
 
 ## ✨ 功能

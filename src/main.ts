@@ -234,6 +234,9 @@ Promise.all([
     }
     loading.hidden = true;
     updateTradStatus();
+    // 支持 ?q=文本 预填（可分享带内容的链接）
+    const q = new URLSearchParams(location.search).get('q');
+    if (q && !textInput.value) textInput.value = q;
     renderChars();
   })
   .catch(() => {
@@ -555,6 +558,8 @@ function isStandalone(): boolean {
 }
 
 function setupInstallBanner() {
+  // ?clean 用于截图/嵌入场景，不显示安装引导
+  if (new URLSearchParams(location.search).has('clean')) return;
   if (isStandalone() || localStorage.getItem(INSTALL_DISMISS_KEY)) return;
   const ua = navigator.userAgent;
   const isIOS = /iPhone|iPad|iPod/.test(ua);

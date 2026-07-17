@@ -4,6 +4,12 @@
 
 [中文](./README.md) | **Live demo: https://dezhaohe.github.io/bishun/**
 
+<p align="center">
+  <img src="docs/screenshot-main.png" width="260" alt="Paste a paragraph, tap any character" />
+  <img src="docs/screenshot-canto.png" width="260" alt="On-demand traditional/Cantonese pack" />
+  <img src="docs/screenshot-settings.png" width="260" alt="Settings" />
+</p>
+
 Unlike stroke-order websites that require one online query per character, this tool splits a whole paragraph into tappable character cards at once. Tap a character to see its stroke order. **Fully offline after the first visit** — install it to your phone's home screen as a standalone app.
 
 ## ✨ Features
