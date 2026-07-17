@@ -146,6 +146,43 @@ body {
   color: var(--muted);
   margin: 8px 0 0;
 }
+.setting-item select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--ink);
+  font-size: 15px;
+  font-family: inherit;
+  padding: 6px 8px;
+  flex-shrink: 0;
+}
+.feedback-page {
+  z-index: 21;
+}
+.feedback-form {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 12px;
+}
+.feedback-form textarea,
+.feedback-form input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+  padding: 10px 12px;
+  font-size: 16px;
+  font-family: inherit;
+  color: var(--ink);
+  outline: none;
+  resize: vertical;
+}
+.feedback-form textarea:focus,
+.feedback-form input:focus {
+  border-color: var(--accent);
+}
 
 .input-area textarea {
   width: 100%;

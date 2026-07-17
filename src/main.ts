@@ -63,6 +63,17 @@ app.innerHTML = `
         </span>
         <input type="checkbox" id="quiz-toggle" />
       </label>
+      <label class="setting-item">
+        <span class="setting-label">
+          <span>笔顺动画速度</span>
+          <small>默认 ×1.0</small>
+        </span>
+        <select id="speed-select">
+          <option value="0.5">×0.5</option>
+          <option value="1">×1.0</option>
+          <option value="2">×2.0</option>
+        </select>
+      </label>
     </div>
 
     <p class="settings-group-title">应用</p>
@@ -78,6 +89,17 @@ app.innerHTML = `
         <span class="setting-label">
           <span>扩展字库</span>
           <small id="trad-pack-status">未下载 · 含繁体与粤语字，约 10MB</small>
+        </span>
+        <span class="chevron">›</span>
+      </button>
+    </div>
+
+    <p class="settings-group-title">反馈</p>
+    <div class="settings-group">
+      <button id="feedback-btn" class="setting-item setting-action">
+        <span class="setting-label">
+          <span>💬 意见反馈</span>
+          <small>建议和问题都欢迎，会认真看</small>
         </span>
         <span class="chevron">›</span>
       </button>
@@ -118,11 +140,24 @@ app.innerHTML = `
     <p id="radical-info" class="stroke-names"></p>
     <p id="stroke-names" class="stroke-names"></p>
     <div class="detail-actions">
-      <button id="replay-btn" class="action-btn">▶ 重播</button>
-      <button id="speed-btn" class="action-btn"></button>
       <button id="quiz-btn" class="action-btn" hidden>✍ 练习</button>
     </div>
     <p id="quiz-hint" class="setting-hint" hidden>沿着灰色轮廓逐笔描写，写错会提示重画</p>
+  </div>
+
+  <div id="feedback-page" class="settings-page feedback-page" hidden>
+    <div class="settings-inner">
+      <header class="settings-header">
+        <button id="feedback-back" class="back-btn" aria-label="返回">‹ 返回</button>
+        <h2>意见反馈</h2>
+        <span class="settings-header-spacer"></span>
+      </header>
+      <div class="settings-group feedback-form">
+        <textarea id="feedback-text" rows="6" placeholder="说说你的建议，或遇到的问题（比如某个字的笔顺不对）…"></textarea>
+        <input id="feedback-contact" type="text" placeholder="联系方式（选填，方便回复你）" autocomplete="off" />
+        <button id="feedback-submit" class="action-btn install-primary">提交反馈</button>
+      </div>
+    </div>
   </div>
 
   <div id="loading" class="loading">正在加载笔顺数据…</div>
@@ -159,11 +194,9 @@ const loading = $('#loading');
 const quizToggle = $<HTMLInputElement>('#quiz-toggle');
 const quizBtn = $<HTMLButtonElement>('#quiz-btn');
 const quizHint = $('#quiz-hint');
-const speedBtn = $<HTMLButtonElement>('#speed-btn');
+const speedSelect = $<HTMLSelectElement>('#speed-select');
 
-const SPEEDS = [0.5, 1, 2];
-const speedLabel = () => `速度 ×${settings.speed}`;
-speedBtn.textContent = speedLabel();
+speedSelect.value = String(settings.speed);
 quizToggle.checked = settings.quizEnabled;
 
 // ---------- 数据加载 ----------
@@ -300,7 +333,10 @@ function showDetail(ch: string, opts: { scroll?: boolean } = {}) {
   if (opts.scroll !== false) detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
+let animTimer: number | undefined;
+
 function createWriter() {
+  clearTimeout(animTimer);
   const target = $('#writer-target');
   target.innerHTML = '';
   const size = Math.min(target.clientWidth || 280, 320);
@@ -318,7 +354,11 @@ function createWriter() {
     showCharacter: false,
     charDataLoader: (char, onComplete) => onComplete(strokeData[char] as never),
   });
-  writer.loopCharacterAnimation();
+  // 延迟 300ms 再起笔：让用户先看清整个米字格，不错过第一笔
+  const w = writer;
+  animTimer = window.setTimeout(() => {
+    if (writer === w) w.loopCharacterAnimation();
+  }, 300);
 }
 
 $('#detail-close').addEventListener('click', () => {
@@ -326,24 +366,17 @@ $('#detail-close').addEventListener('click', () => {
   document.querySelectorAll('.char-card.active').forEach((el) => el.classList.remove('active'));
 });
 
-$('#replay-btn').addEventListener('click', () => {
-  if (!writer) return;
-  quizMode = false;
-  quizHint.hidden = true;
-  createWriter();
-});
-
-speedBtn.addEventListener('click', () => {
-  settings.speed = SPEEDS[(SPEEDS.indexOf(settings.speed) + 1) % SPEEDS.length] ?? 1;
+speedSelect.addEventListener('change', () => {
+  settings.speed = Number(speedSelect.value) || 1;
   saveSettings(settings);
-  speedBtn.textContent = speedLabel();
-  if (writer && !quizMode) createWriter();
+  if (writer && !detail.hidden && !quizMode) createWriter();
 });
 
 quizBtn.addEventListener('click', () => {
   if (!writer) return;
   quizMode = true;
   quizHint.hidden = false;
+  clearTimeout(animTimer);
   writer.cancelQuiz();
   const target = $('#writer-target');
   target.innerHTML = '';
@@ -362,7 +395,7 @@ quizBtn.addEventListener('click', () => {
   });
   writer.quiz({
     onComplete: () => {
-      quizHint.textContent = '✅ 写完了！点"重播"看动画，或"练习"再来一次';
+      quizHint.textContent = '✅ 写完了！再点"练习"可以再来一次';
     },
   });
   quizHint.textContent = '沿着灰色轮廓逐笔描写，写错会提示重画';
@@ -379,6 +412,51 @@ quizToggle.addEventListener('change', () => {
   settings.quizEnabled = quizToggle.checked;
   saveSettings(settings);
   quizBtn.hidden = !settings.quizEnabled || detail.hidden;
+});
+
+// ---------- 意见反馈（Formspree） ----------
+const FEEDBACK_ENDPOINT = 'https://formspree.io/f/mrenpprz';
+const feedbackPage = $('#feedback-page');
+const feedbackText = $<HTMLTextAreaElement>('#feedback-text');
+const feedbackContact = $<HTMLInputElement>('#feedback-contact');
+const feedbackSubmit = $<HTMLButtonElement>('#feedback-submit');
+
+$('#feedback-btn').addEventListener('click', () => {
+  feedbackPage.hidden = false;
+});
+$('#feedback-back').addEventListener('click', () => {
+  feedbackPage.hidden = true;
+});
+
+feedbackSubmit.addEventListener('click', async () => {
+  const message = feedbackText.value.trim();
+  if (!message) {
+    showToast('先写点内容再提交吧');
+    return;
+  }
+  feedbackSubmit.disabled = true;
+  feedbackSubmit.textContent = '提交中…';
+  try {
+    const r = await fetch(FEEDBACK_ENDPOINT, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({
+        message,
+        contact: feedbackContact.value.trim() || '未留联系方式',
+        ua: navigator.userAgent,
+      }),
+    });
+    if (!r.ok) throw new Error(String(r.status));
+    feedbackText.value = '';
+    feedbackContact.value = '';
+    feedbackPage.hidden = true;
+    showToast('已收到你的反馈，谢谢！🙏');
+  } catch {
+    showToast('提交失败，请检查网络后重试');
+  } finally {
+    feedbackSubmit.disabled = false;
+    feedbackSubmit.textContent = '提交反馈';
+  }
 });
 
 // ---------- 繁体扩展字库（按需下载） ----------
