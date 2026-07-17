@@ -107,6 +107,12 @@ app.innerHTML = `
 
     <p class="settings-group-title">关于</p>
     <div class="settings-group">
+      <div class="setting-item about-text">
+        <span class="setting-label">
+          <span>笔顺</span>
+          <small>离线汉字笔顺查询工具。输入一段话，点任意字查看笔顺动画、拼音、笔画和部首结构；支持描红练习。基础字库覆盖《通用规范汉字表》常用字，繁体/粤语字可按需下载；首次打开后断网也能用，建议添加到主屏幕当作 App 使用。</small>
+        </span>
+      </div>
       <a class="setting-item setting-action" href="https://github.com/dezhaohe/bishun" target="_blank" rel="noopener">
         <span class="setting-label">
           <span>开源地址</span>
@@ -354,11 +360,11 @@ function createWriter() {
     showCharacter: false,
     charDataLoader: (char, onComplete) => onComplete(strokeData[char] as never),
   });
-  // 延迟 300ms 再起笔：让用户先看清整个米字格，不错过第一笔
+  // 延迟 400ms 再起笔：让用户先看清整个米字格，不错过第一笔
   const w = writer;
   animTimer = window.setTimeout(() => {
     if (writer === w) w.loopCharacterAnimation();
-  }, 300);
+  }, 400);
 }
 
 $('#detail-close').addEventListener('click', () => {
@@ -447,10 +453,12 @@ feedbackSubmit.addEventListener('click', async () => {
       }),
     });
     if (!r.ok) throw new Error(String(r.status));
+    // 先让用户看到成功状态，再返回设置页，避免"不知道有没有提交上"
+    feedbackSubmit.textContent = '✅ 提交成功，谢谢你的反馈！';
+    await new Promise((res) => setTimeout(res, 1200));
     feedbackText.value = '';
     feedbackContact.value = '';
     feedbackPage.hidden = true;
-    showToast('已收到你的反馈，谢谢！🙏');
   } catch {
     showToast('提交失败，请检查网络后重试');
   } finally {
@@ -468,8 +476,8 @@ let tradDownloading = false;
 
 function updateTradStatus() {
   tradStatusEl.textContent = localStorage.getItem(TRAD_KEY)
-    ? `已下载 · ${tradIndex.size} 个繁体/粤语字，离线可用`
-    : '未下载 · 含繁体与粤语字，约 10MB';
+    ? `已下载 · ${tradIndex.size} 个繁体/粤语字，点击可删除`
+    : '未下载 · 含繁体与粤语字，约 10MB，点击下载';
 }
 
 // 共享的下载逻辑：字卡提示和设置项两个入口都走这里
@@ -511,10 +519,14 @@ tradDownloadBtn.addEventListener('click', async () => {
   tradDownloadBtn.textContent = '下载扩展字库';
 });
 
-// 设置里的扩展字库入口
+// 设置里的扩展字库入口：未下载 → 下载；已下载 → 可删除（删除后随时可重新下载）
 $('#trad-pack-btn').addEventListener('click', async () => {
   if (localStorage.getItem(TRAD_KEY)) {
-    showToast('扩展字库已下载，离线可用 ✅');
+    if (confirm('删除扩展字库？删除后繁体/粤语字将不可查，可随时重新下载。')) {
+      localStorage.removeItem(TRAD_KEY);
+      await caches.delete('bishun-trad-pack').catch(() => {});
+      location.reload();
+    }
     return;
   }
   tradStatusEl.textContent = '下载中…';

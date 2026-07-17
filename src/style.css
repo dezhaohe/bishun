@@ -141,6 +141,9 @@ body {
   line-height: 1;
   flex-shrink: 0;
 }
+.about-text small {
+  line-height: 1.7;
+}
 .setting-hint {
   font-size: 13px;
   color: var(--muted);
