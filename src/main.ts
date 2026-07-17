@@ -47,7 +47,13 @@ app.innerHTML = `
     <button id="settings-btn" class="icon-btn" aria-label="设置">⚙</button>
   </header>
 
-  <div id="settings-panel" class="settings-panel" hidden>
+  <div id="settings-panel" class="settings-page" hidden>
+    <div class="settings-inner">
+    <header class="settings-header">
+      <button id="settings-back" class="back-btn" aria-label="返回">‹ 返回</button>
+      <h2>设置</h2>
+      <span class="settings-header-spacer"></span>
+    </header>
     <p class="settings-group-title">学习</p>
     <div class="settings-group">
       <label class="setting-item">
@@ -86,6 +92,7 @@ app.innerHTML = `
         </span>
         <span class="chevron">›</span>
       </a>
+    </div>
     </div>
   </div>
 
@@ -361,10 +368,12 @@ quizBtn.addEventListener('click', () => {
   quizHint.textContent = '沿着灰色轮廓逐笔描写，写错会提示重画';
 });
 
-// ---------- 设置 ----------
+// ---------- 设置（独立全屏页，避免与主界面耦合） ----------
 $('#settings-btn').addEventListener('click', () => {
-  const panel = $('#settings-panel');
-  panel.hidden = !panel.hidden;
+  $('#settings-panel').hidden = false;
+});
+$('#settings-back').addEventListener('click', () => {
+  $('#settings-panel').hidden = true;
 });
 quizToggle.addEventListener('change', () => {
   settings.quizEnabled = quizToggle.checked;
