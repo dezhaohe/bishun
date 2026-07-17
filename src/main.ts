@@ -48,12 +48,45 @@ app.innerHTML = `
   </header>
 
   <div id="settings-panel" class="settings-panel" hidden>
-    <label class="setting-row">
-      <span>描红练习</span>
-      <input type="checkbox" id="quiz-toggle" />
-    </label>
-    <p class="setting-hint">开启后，字卡详情中会出现"练习"按钮，可以用手指描写笔画。</p>
-    <button id="add-home-btn" class="action-btn add-home-btn">📲 添加到主屏幕（断网也能查）</button>
+    <p class="settings-group-title">学习</p>
+    <div class="settings-group">
+      <label class="setting-item">
+        <span class="setting-label">
+          <span>描红练习</span>
+          <small>点开字卡后可用手指描写笔画</small>
+        </span>
+        <input type="checkbox" id="quiz-toggle" />
+      </label>
+    </div>
+
+    <p class="settings-group-title">应用</p>
+    <div class="settings-group">
+      <button id="add-home-btn" class="setting-item setting-action">
+        <span class="setting-label">
+          <span>📲 添加到主屏幕</span>
+          <small>安装为应用，断网也能查</small>
+        </span>
+        <span class="chevron">›</span>
+      </button>
+      <button id="trad-pack-btn" class="setting-item setting-action">
+        <span class="setting-label">
+          <span>扩展字库</span>
+          <small id="trad-pack-status">未下载 · 含繁体与粤语字，约 10MB</small>
+        </span>
+        <span class="chevron">›</span>
+      </button>
+    </div>
+
+    <p class="settings-group-title">关于</p>
+    <div class="settings-group">
+      <a class="setting-item setting-action" href="https://github.com/dezhaohe/bishun" target="_blank" rel="noopener">
+        <span class="setting-label">
+          <span>开源地址</span>
+          <small>GitHub · MIT License</small>
+        </span>
+        <span class="chevron">›</span>
+      </a>
+    </div>
   </div>
 
   <section class="input-area">
@@ -154,6 +187,7 @@ Promise.all([
       }
     }
     loading.hidden = true;
+    updateTradStatus();
     renderChars();
   })
   .catch(() => {
@@ -341,7 +375,33 @@ quizToggle.addEventListener('change', () => {
 // ---------- 繁体扩展字库（按需下载） ----------
 const tradPrompt = $('#trad-prompt');
 const tradDownloadBtn = $<HTMLButtonElement>('#trad-download');
+const tradStatusEl = $('#trad-pack-status');
 let tradPendingChar = '';
+let tradDownloading = false;
+
+function updateTradStatus() {
+  tradStatusEl.textContent = localStorage.getItem(TRAD_KEY)
+    ? `已下载 · ${tradIndex.size} 个繁体/粤语字，离线可用`
+    : '未下载 · 含繁体与粤语字，约 10MB';
+}
+
+// 共享的下载逻辑：字卡提示和设置项两个入口都走这里
+async function doDownloadTradPack(): Promise<boolean> {
+  if (tradDownloading) return false;
+  tradDownloading = true;
+  try {
+    Object.assign(strokeData, await fetchTradPack());
+    localStorage.setItem(TRAD_KEY, '1');
+    renderChars();
+    updateTradStatus();
+    return true;
+  } catch {
+    showToast('下载失败，请检查网络后重试');
+    return false;
+  } finally {
+    tradDownloading = false;
+  }
+}
 
 function showTradPrompt(ch: string) {
   tradPendingChar = ch;
@@ -353,20 +413,28 @@ function showTradPrompt(ch: string) {
 tradDownloadBtn.addEventListener('click', async () => {
   tradDownloadBtn.disabled = true;
   tradDownloadBtn.textContent = '下载中…';
-  try {
-    Object.assign(strokeData, await fetchTradPack());
-    localStorage.setItem(TRAD_KEY, '1');
+  if (await doDownloadTradPack()) {
     tradPrompt.hidden = true;
-    renderChars();
     if (tradPendingChar in strokeData) {
       showDetail(tradPendingChar);
       showToast('扩展字库已就绪，之后离线也能查 ✅');
     }
-  } catch {
-    showToast('下载失败，请检查网络后重试');
-  } finally {
-    tradDownloadBtn.disabled = false;
-    tradDownloadBtn.textContent = '下载扩展字库';
+  }
+  tradDownloadBtn.disabled = false;
+  tradDownloadBtn.textContent = '下载扩展字库';
+});
+
+// 设置里的扩展字库入口
+$('#trad-pack-btn').addEventListener('click', async () => {
+  if (localStorage.getItem(TRAD_KEY)) {
+    showToast('扩展字库已下载，离线可用 ✅');
+    return;
+  }
+  tradStatusEl.textContent = '下载中…';
+  if (await doDownloadTradPack()) {
+    showToast('扩展字库已就绪 ✅');
+  } else {
+    updateTradStatus();
   }
 });
 
