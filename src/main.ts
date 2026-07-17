@@ -43,7 +43,7 @@ let quizMode = false;
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <header class="topbar">
-    <h1>笔顺</h1>
+    <h1>笔顺随身查</h1>
     <button id="settings-btn" class="icon-btn" aria-label="设置">⚙</button>
   </header>
 
@@ -109,7 +109,7 @@ app.innerHTML = `
     <div class="settings-group">
       <div class="setting-item about-text">
         <span class="setting-label">
-          <span>笔顺</span>
+          <span>笔顺随身查</span>
           <small>离线汉字笔顺查询工具。输入一段话，点任意字查看笔顺动画、拼音、笔画和部首结构；支持描红练习。基础字库覆盖《通用规范汉字表》常用字，繁体/粤语字可按需下载；首次打开后断网也能用，建议添加到主屏幕当作 App 使用。</small>
         </span>
       </div>

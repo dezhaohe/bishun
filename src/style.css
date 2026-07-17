@@ -40,10 +40,11 @@ body {
 .icon-btn {
   border: none;
   background: none;
-  font-size: 20px;
-  color: var(--muted);
-  padding: 8px;
+  font-size: 26px;
+  color: var(--ink);
+  padding: 10px;
   cursor: pointer;
+  line-height: 1;
 }
 
 .settings-page {

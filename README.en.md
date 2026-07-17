@@ -1,4 +1,4 @@
-# Bishun (笔顺)
+# Bishun (笔顺随身查)
 
 > Offline Chinese stroke-order lookup PWA — paste a paragraph, tap any character to see its stroke order animated
 

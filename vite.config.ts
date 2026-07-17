@@ -23,9 +23,9 @@ export default defineConfig({
         ],
       },
       manifest: {
-        name: '汉字笔顺查询',
-        short_name: '笔顺',
-        description: '离线查询汉字笔画笔顺：粘贴一段话，点字看笔顺动画',
+        name: '笔顺随身查',
+        short_name: '笔顺随身查',
+        description: '整段识别，点字看笔顺，离线可用：粘贴一段话，点任意字查看笔顺动画',
         lang: 'zh-CN',
         display: 'standalone',
         orientation: 'portrait',

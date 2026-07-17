@@ -1,6 +1,6 @@
-# 笔顺 Bishun
+# 笔顺随身查 Bishun
 
-> 离线汉字笔顺查询 PWA — 粘贴一段话，点任意字看笔顺动画
+> 整段识别 · 点字看笔顺 · 离线可用 — 别人逐字查，这里粘贴一段话，点哪个字看哪个字
 
 [English](./README.en.md) | **在线体验：https://dezhaohe.github.io/bishun/**
 
