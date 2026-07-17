@@ -14,7 +14,8 @@ Unlike stroke-order websites that require one online query per character, this t
 - **Tracing practice** (optional, off by default): trace each stroke with your finger; wrong strokes prompt a retry
 - **Fully offline**: the Service Worker precaches ~20MB of stroke data (~8MB gzipped, downloaded once)
 - **Coverage**: 6,866 of the 8,105 characters in China's Table of General Standard Chinese Characters — >99.9% of everyday text
-- **On-demand traditional pack**: tapping a traditional character offers a one-tap download of the extension pack (2,708 traditional/rare characters, ~10MB), which then also works offline — keeping the first-load experience light
+- **On-demand extension pack**: tapping a traditional/Cantonese character offers a one-tap download of the extension pack (2,724 characters, ~10MB), which then also works offline — keeping the first-load experience light
+- **Cantonese support**: common Hong Kong Cantonese characters (哋咗佢冇嗰喺搵攞…) missing from every open dataset are synthesized from real glyph components with Jyutping annotations (see `scripts/canto.mjs`)
 
 ## 📱 Install on your phone
 

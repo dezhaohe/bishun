@@ -9,7 +9,12 @@ import { registerSW } from 'virtual:pwa-register';
 registerSW({ immediate: true });
 cnchar.use(order, radical, trad);
 
-type StrokeMap = Record<string, object>;
+interface CharData {
+  strokes: string[];
+  medians: number[][][];
+  info?: { jyutping?: string };
+}
+type StrokeMap = Record<string, CharData>;
 
 const SETTINGS_KEY = 'bishun-settings';
 interface Settings {
@@ -84,7 +89,7 @@ app.innerHTML = `
   <div id="trad-prompt" class="install-banner" hidden>
     <div class="install-text">
       <strong id="trad-prompt-title"></strong>
-      <span>该字不在基础字库中。可下载繁体扩展字库（2708 个繁体/生僻字，约 10MB，仅需一次，下载后离线可用）。</span>
+      <span>该字不在基础字库中。可下载扩展字库（2724 个繁体、粤语及生僻字，约 10MB，仅需一次，下载后离线可用）。</span>
     </div>
     <div class="install-actions">
       <button id="trad-download" class="action-btn install-primary">下载扩展字库</button>
@@ -209,18 +214,21 @@ function showDetail(ch: string) {
   quizMode = false;
   detail.hidden = false;
 
-  const pinyin = (cnchar.spell(ch, 'array', 'tone', 'poly', 'low') as string[])
+  const data = strokeData[ch];
+  let pinyin = (cnchar.spell(ch, 'array', 'tone', 'poly', 'low') as string[])
     .join(' / ')
     .replace(/[()]/g, '')
     .replace(/\|/g, ' / ');
-  const count = cnchar.stroke(ch) as number;
+  // cnchar 不认识的字（如粤语字）会原样返回；粤语字改用数据内嵌的粤拼
+  if (pinyin === ch) pinyin = data.info?.jyutping ? `粤拼 ${data.info.jyutping}` : '';
+  const count = (cnchar.stroke(ch) as number) || data.strokes.length;
   const names = ((cnchar.stroke(ch, 'order', 'name') as string[][])[0] ?? []).map((n) =>
     n.replace(/\d+$/, '').replace(/\|/g, ' / ')
   );
-  $('#detail-pinyin').textContent = `${ch} · ${pinyin}`;
+  $('#detail-pinyin').textContent = pinyin ? `${ch} · ${pinyin}` : ch;
   $('#detail-count').textContent = `${count} 画`;
   const rad = (cnchar.radical(ch) as { radical: string; struct: string }[])[0];
-  $('#radical-info').textContent = rad ? `部首：${rad.radical} · ${rad.struct}` : '';
+  $('#radical-info').textContent = rad?.radical ? `部首：${rad.radical} · ${rad.struct}` : '';
   $('#stroke-names').textContent = names.length ? `笔顺：${names.join(' → ')}` : '';
 
   quizBtn.hidden = !settings.quizEnabled;

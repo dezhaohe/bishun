@@ -5,6 +5,7 @@
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { buildCantoChars } from './canto.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 // 默认全量规范字表；设置 CHAR_LIMIT 可裁剪（字表按一级→二级→三级排序，
@@ -41,6 +42,16 @@ for (const f of readdirSync(dataDir)) {
   trad[ch] = read(ch);
 }
 
+// 合成的粤语字并入扩展包（开源数据源未覆盖，见 canto.mjs）
+const canto = buildCantoChars(dataDir);
+let cantoCount = 0;
+for (const [ch, data] of Object.entries(canto)) {
+  if (!baseSet.has(ch) && !trad[ch]) {
+    trad[ch] = data;
+    cantoCount++;
+  }
+}
+
 mkdirSync(outDir, { recursive: true });
 const baseJson = compact(base);
 const tradJson = compact(trad);
@@ -50,5 +61,5 @@ writeFileSync(join(outDir, 'trad-index.json'), JSON.stringify(Object.keys(trad).
 
 const mb = (s) => (s.length / 1024 / 1024).toFixed(1);
 console.log(`基础包 strokes.json: ${baseSet.size} 字, ${mb(baseJson)} MB`);
-console.log(`扩展包 strokes-trad.json: ${Object.keys(trad).length} 字, ${mb(tradJson)} MB`);
+console.log(`扩展包 strokes-trad.json: ${Object.keys(trad).length} 字, ${mb(tradJson)} MB（含合成粤语字 ${cantoCount} 个）`);
 if (missing) console.warn(`规范字表中缺数据的字: ${missing} 个（数据源未覆盖，多为三级生僻字）`);
