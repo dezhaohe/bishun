@@ -17,7 +17,7 @@ const RECIPES = {
   嚟: { donor: '味', keepN: 3, comp: '黎', jyutping: 'lai4' },
   嗮: { donor: '味', keepN: 3, comp: '晒', jyutping: 'saai3' },
   噉: { donor: '味', keepN: 3, comp: '敢', jyutping: 'gam2' },
-  喺: { donor: '味', keepN: 3, comp: '奚', jyutping: 'hai2' },
+  喺: { donor: '味', keepN: 3, comp: '係', jyutping: 'hai2' },
   喎: { donor: '味', keepN: 3, comp: '咼', jyutping: 'wo3' },
   嘥: { donor: '味', keepN: 3, comp: '徙', jyutping: 'saai1' },
   佢: { donor: '仁', keepN: 2, comp: '巨', jyutping: 'keoi5' },

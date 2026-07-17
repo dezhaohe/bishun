@@ -129,7 +129,7 @@ quizToggle.checked = settings.quizEnabled;
 const dataUrl = (name: string) => `${import.meta.env.BASE_URL}data/${name}`;
 
 // 扩展包走 CacheFirst 缓存，内容更新时必须升版本号换 URL，否则老用户永远拿到旧包
-const TRAD_PACK_VERSION = 2;
+const TRAD_PACK_VERSION = 3;
 
 async function fetchTradPack(): Promise<StrokeMap> {
   const r = await fetch(dataUrl(`strokes-trad.json?v=${TRAD_PACK_VERSION}`));
