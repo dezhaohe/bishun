@@ -16,7 +16,7 @@ export default defineConfig({
         maximumFileSizeToCacheInBytes: 32 * 1024 * 1024,
         runtimeCaching: [
           {
-            urlPattern: /strokes-trad\.json$/,
+            urlPattern: /strokes-trad\.json/,
             handler: 'CacheFirst',
             options: { cacheName: 'bishun-trad-pack' },
           },
