@@ -57,7 +57,7 @@ app.innerHTML = `
   </div>
 
   <section class="input-area">
-    <textarea id="text-input" rows="3" placeholder="粘贴或输入一段话，自动识别其中的汉字。使用语音输入会更快哦 🎤" autocomplete="off"></textarea>
+    <textarea id="text-input" rows="3" placeholder="请输入一个字或一段话让我识别吧。使用语音输入会更快哦 🎤" autocomplete="off"></textarea>
   </section>
 
   <section id="char-grid" class="char-grid"></section>
@@ -177,6 +177,7 @@ function renderChars() {
   const chars = extractChars(textInput.value);
   charGrid.innerHTML = '';
   emptyHint.hidden = chars.length > 0;
+  const cardOf = new Map<string, HTMLButtonElement>();
   for (const ch of chars) {
     const btn = document.createElement('button');
     btn.className = 'char-card';
@@ -203,6 +204,22 @@ function renderChars() {
       }
     });
     charGrid.appendChild(btn);
+    cardOf.set(ch, btn);
+  }
+
+  // 识别后自动展示：正在查看的字仍在列表中则保持选中，否则默认选中第一个可查的字
+  const keepCurrent =
+    !detail.hidden && currentChar && chars.includes(currentChar) && currentChar in strokeData;
+  if (keepCurrent) {
+    cardOf.get(currentChar)?.classList.add('active');
+  } else {
+    const first = chars.find((c) => c in strokeData);
+    if (first) {
+      cardOf.get(first)?.classList.add('active');
+      showDetail(first, { scroll: false });
+    } else {
+      detail.hidden = true;
+    }
   }
 }
 
@@ -213,7 +230,7 @@ textInput.addEventListener('input', () => {
 });
 
 // ---------- 详情与动画 ----------
-function showDetail(ch: string) {
+function showDetail(ch: string, opts: { scroll?: boolean } = {}) {
   currentChar = ch;
   quizMode = false;
   detail.hidden = false;
@@ -238,7 +255,8 @@ function showDetail(ch: string) {
   quizBtn.hidden = !settings.quizEnabled;
   quizHint.hidden = true;
   createWriter();
-  detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  // 自动展示（如输入时默认选中第一个字）不抢滚动位置
+  if (opts.scroll !== false) detail.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function createWriter() {
