@@ -131,7 +131,7 @@ app.innerHTML = `
   <section id="char-grid" class="char-grid"></section>
   <p id="empty-hint" class="empty-hint">输入文字后，点击任意字查看笔顺 ✍️</p>
   <div id="empty-demo" class="empty-demo" hidden>
-    <div id="demo-writer" class="mizige demo-writer-box"></div>
+    <img class="demo-gif" src="${import.meta.env.BASE_URL}demo-bi.gif" width="120" height="120" alt="点击文字查看笔顺动画演示" />
     <p class="empty-demo-caption">👆 点这样的字，就能看到笔顺动画啦</p>
   </div>
 
@@ -266,7 +266,7 @@ function renderChars() {
   const chars = extractChars(textInput.value);
   if (chars.length > 0) hideDemo();
   charGrid.innerHTML = '';
-  emptyHint.hidden = chars.length > 0 || !$('#empty-demo').hidden;
+  emptyHint.hidden = chars.length > 0;
   const cardOf = new Map<string, HTMLButtonElement>();
   for (const ch of chars) {
     const btn = document.createElement('button');
@@ -320,7 +320,9 @@ textInput.addEventListener('input', () => {
   renderTimer = window.setTimeout(renderChars, 200);
 });
 
-// ---------- 首次访问演示：播放一次"笔"字的笔顺，教用户点字看笔顺 ----------
+// ---------- 首次访问演示：用一张预渲染的 GIF 教用户"点字看笔顺"，不占用 emptyHint 的位置 ----------
+// GIF 由 scripts/make-demo-gif.mjs 预先生成（public/demo-bi.gif），与应用内
+// HanziWriter 的实时渲染逻辑完全独立，互不影响。
 const DEMO_SEEN_KEY = 'bishun-demo-seen';
 const emptyDemo = $('#empty-demo');
 
@@ -330,22 +332,9 @@ function hideDemo() {
 
 function maybeShowDemo() {
   if (localStorage.getItem(DEMO_SEEN_KEY)) return;
-  if (!('笔' in strokeData)) return;
   // 标记为已展示：确保无论刷新与否，这个演示一生只播一次
   localStorage.setItem(DEMO_SEEN_KEY, '1');
   emptyDemo.hidden = false;
-  emptyHint.hidden = true;
-  const target = $('#demo-writer');
-  const demoWriter = HanziWriter.create(target, '笔', {
-    width: 120,
-    height: 120,
-    padding: 8,
-    strokeColor: '#2c3e50',
-    radicalColor: '#c0392b',
-    showCharacter: false,
-    charDataLoader: (char, onComplete) => onComplete(strokeData[char] as never),
-  });
-  window.setTimeout(() => demoWriter.animateCharacter(), 400);
 }
 
 // ---------- 详情与动画 ----------

@@ -11,7 +11,7 @@ export default defineConfig({
       workbox: {
         // 基础笔顺数据一并预缓存，保证首访后完全离线可用；
         // 繁体扩展包不预缓存，用户按需下载后由 runtimeCaching 缓存
-        globPatterns: ['**/*.{js,css,html,svg,png,json}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,gif,json}'],
         globIgnores: ['**/strokes-trad.json'],
         maximumFileSizeToCacheInBytes: 32 * 1024 * 1024,
         runtimeCaching: [

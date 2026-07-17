@@ -15,6 +15,7 @@ Unlike stroke-order websites that require one online query per character, this t
 ## ✨ Features
 
 - **Paragraph input**: paste any text; Han characters are extracted and deduplicated into tappable cards
+- **First-visit demo**: a tiny GIF of "笔" being drawn plays once in the blank area (pre-rendered by `scripts/make-demo-gif.mjs`, fully independent from the app's live HanziWriter rendering) to teach new users "tap a character to see its stroke order"
 - **Stroke-order animation**: looping demo in a practice grid, radical highlighted in red, speed ×0.5 / ×1 / ×2
 - **Character info**: pinyin (incl. polyphones), stroke count, radical, structure (left-right / top-bottom / enclosure…), stroke names
 - **Tracing practice** (optional, off by default): trace each stroke with your finger; wrong strokes prompt a retry

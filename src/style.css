@@ -289,8 +289,7 @@ body {
   margin: 12px auto;
   width: fit-content;
 }
-#writer-target,
-.mizige {
+#writer-target {
   position: relative;
   border: 2px solid var(--accent);
   border-radius: 8px;
@@ -304,18 +303,18 @@ body {
   height: min(80vw, 320px);
   touch-action: none;
 }
-#writer-target svg,
-.mizige svg {
+#writer-target svg {
   display: block;
 }
 
 .empty-demo {
   text-align: center;
-  margin-top: 28px;
+  margin-top: 24px;
 }
-.demo-writer-box {
-  width: 120px !important;
-  height: 120px !important;
+.demo-gif {
+  border: 2px solid var(--accent);
+  border-radius: 8px;
+  display: block;
   margin: 0 auto;
 }
 .empty-demo-caption {
