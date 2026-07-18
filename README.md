@@ -15,8 +15,8 @@
 ## ✨ 功能
 
 - **整段输入**：粘贴任意文本，自动提取汉字并去重成可点击字卡
-- **首次访问演示**：空白区域播放一次"笔"字笔顺的小 GIF（`scripts/make-demo-gif.mjs` 预渲染，与应用内 HanziWriter 的实时渲染逻辑相互独立），教新用户"点字看笔顺"，只出现一次
-- **笔顺动画**：米字格中循环演示，部首标红，速度 ×0.5 / ×1 / ×2 可调
+- **首次使用演示**：还没输入过内容的用户会在空白区域看到"笔"字笔顺 GIF（播放一遍，`scripts/make-demo-gif.mjs` 预渲染，与应用内 HanziWriter 实时渲染相互独立），教新用户"点字看笔顺"；开始输入后不再出现
+- **笔顺动画**：米字格中循环演示，部首标红，速度 ×0.5 / ×1 / ×1.5 可调
 - **汉字信息**：拼音（含多音字）、笔画数、部首、字形结构（左右/上下/包围…）、笔顺名称（横 → 竖 → 撇 …）
 - **描红练习**：可选开启（设置 ⚙ 中），手指沿轮廓逐笔描写，写错提示重画
 - **完全离线**：Service Worker 预缓存约 20MB 笔顺数据（gzip 传输约 8MB，仅首次下载）
@@ -27,10 +27,10 @@
 ## 📱 手机安装（推荐）
 
 1. 手机浏览器打开 https://dezhaohe.github.io/bishun/
-2. iOS Safari：分享 → **添加到主屏幕**；Android：不同品牌手机（小米/OPPO/vivo/华为/三星…）应用内会给出对应浏览器的操作提示
+2. 点应用内 **设置 ⚙ → 添加到主屏幕**：iOS 会提示用 Safari 分享菜单添加；Android 按手机品牌（小米/OPPO/vivo/华为/三星…）给出对应浏览器的操作步骤
 3. 从主屏幕图标打开即是全屏应用，断网可用（建议首次在 WiFi 下打开完成缓存）
 
-> 从微信 / QQ / 微博等 App 内打开时无法直接添加到主屏幕（这是系统限制），应用会提示"复制链接"，粘贴到系统浏览器（Safari / Chrome 等）打开后再添加。
+> 从微信 / QQ / 微博等 App 内打开时无法直接添加到主屏幕（这是系统限制），"设置 → 添加到主屏幕"会提供"复制链接"按钮，粘贴到系统浏览器（Safari / Chrome 等）打开后再添加。
 
 ## 🚀 本地开发
 
@@ -56,12 +56,15 @@ Fork 本仓库后想部署到自己的 GitHub Pages：把 `package.json` 里 `de
 ```
 ├── index.html              # 入口（含 PWA / iOS meta）
 ├── src/
-│   ├── main.ts             # 全部应用逻辑（~250 行）
+│   ├── main.ts             # 全部应用逻辑（单文件）
 │   └── style.css           # 移动优先样式
 ├── scripts/
 │   ├── gsc-chars.json      # 《通用规范汉字表》8105 字
-│   └── build-data.mjs      # 构建时从 hanzi-writer-data 提取合并笔顺数据
-├── public/                 # 图标等静态资源（data/ 为生成产物，不入库）
+│   ├── build-data.mjs      # 构建时从 hanzi-writer-data 提取合并笔顺数据
+│   ├── canto.mjs           # 合成粤语字笔顺数据（开源数据源未覆盖）
+│   ├── make-demo-gif.mjs   # 生成首次使用演示 GIF（public/demo-bi.gif）
+│   └── shoot.mjs           # 生成 README 截图
+├── public/                 # 图标、演示 GIF 等静态资源（data/ 为生成产物，不入库）
 └── vite.config.ts          # Vite + vite-plugin-pwa 配置
 ```
 

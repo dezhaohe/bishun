@@ -27,7 +27,7 @@ const browser = await puppeteer.launch({
 });
 const page = await browser.newPage();
 await page.setViewport({ width: 480, height: 480, deviceScaleFactor: 1 });
-await page.goto(`${BASE}/?clean`, { waitUntil: 'networkidle0', timeout: 30000 });
+await page.goto(`${BASE}/`, { waitUntil: 'networkidle0', timeout: 30000 });
 
 // 用 CDN 上的 hanzi-writer 独立渲染一个演示用的实例（不复用主应用的打包代码，
 // 避免和应用内笔顺渲染逻辑产生耦合），数据仍取本地 strokes.json，与线上一致。
@@ -117,7 +117,7 @@ execFileSync('ffmpeg', [
   '-vf',
   `fps=${fps},scale=${SIZE}:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse`,
   '-loop',
-  '0',
+  '0', // 无限循环：写完后停留约 0.9s（holdFramesAfterDone 那几帧）再从头播，用户随时进来都能看到动画
   OUT,
 ]);
 

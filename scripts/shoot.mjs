@@ -7,13 +7,13 @@ const BASE = 'http://localhost:4173';
 const SHOTS = [
   {
     file: 'docs/screenshot-main.png',
-    url: `${BASE}/?q=白日依山尽，黄河入海流&clean`,
+    url: `${BASE}/?q=白日依山尽，黄河入海流`,
     height: 1000,
     wait: 900, // 400ms 起笔延迟后，正在画第一笔（避开循环间隙的空白期）
   },
   {
     file: 'docs/screenshot-canto.png',
-    url: `${BASE}/?q=佢哋喺度搵嘢食&clean`,
+    url: `${BASE}/?q=佢哋喺度搵嘢食`,
     height: 1000,
     wait: 1500,
     prepare: async (page) => {
@@ -27,7 +27,7 @@ const SHOTS = [
   },
   {
     file: 'docs/screenshot-settings.png',
-    url: `${BASE}/?clean`,
+    url: `${BASE}/`,
     height: 1000,
     wait: 800,
     prepare: async (page) => {

@@ -54,6 +54,24 @@ app.innerHTML = `
       <h2>设置</h2>
       <span class="settings-header-spacer"></span>
     </header>
+    <p class="settings-group-title">应用</p>
+    <div class="settings-group">
+      <button id="add-home-btn" class="setting-item setting-action">
+        <span class="setting-label">
+          <span>📲 添加到主屏幕速开</span>
+          <small>安装为应用，每次都能快速找到和打开，断网也能查</small>
+        </span>
+        <span class="chevron">›</span>
+      </button>
+      <button id="trad-pack-btn" class="setting-item setting-action">
+        <span class="setting-label">
+          <span>扩展字库</span>
+          <small id="trad-pack-status">未下载 · 含繁体、粤语和生僻字，约 10MB</small>
+        </span>
+        <span class="chevron">›</span>
+      </button>
+    </div>
+
     <p class="settings-group-title">学习</p>
     <div class="settings-group">
       <label class="setting-item">
@@ -71,27 +89,9 @@ app.innerHTML = `
         <select id="speed-select">
           <option value="0.5">×0.5</option>
           <option value="1">×1.0</option>
-          <option value="2">×2.0</option>
+          <option value="1.5">×1.5</option>
         </select>
       </label>
-    </div>
-
-    <p class="settings-group-title">应用</p>
-    <div class="settings-group">
-      <button id="add-home-btn" class="setting-item setting-action">
-        <span class="setting-label">
-          <span>📲 添加到主屏幕</span>
-          <small>安装为应用，断网也能查</small>
-        </span>
-        <span class="chevron">›</span>
-      </button>
-      <button id="trad-pack-btn" class="setting-item setting-action">
-        <span class="setting-label">
-          <span>扩展字库</span>
-          <small id="trad-pack-status">未下载 · 含繁体、粤语和生僻字，约 10MB</small>
-        </span>
-        <span class="chevron">›</span>
-      </button>
     </div>
 
     <p class="settings-group-title">反馈</p>
@@ -207,6 +207,12 @@ const quizHint = $('#quiz-hint');
 const speedSelect = $<HTMLSelectElement>('#speed-select');
 
 speedSelect.value = String(settings.speed);
+if (speedSelect.value !== String(settings.speed)) {
+  // 旧版本存在 ×2 挡位，已下线（改为 ×1.5）；旧存档值在此兜底回退到默认速度
+  settings.speed = 1;
+  speedSelect.value = '1';
+  saveSettings(settings);
+}
 // 抢占输入焦点，光标闪烁引导用户直接开始输入（innerHTML 插入的 autofocus 属性不会自动生效，需手动 focus）
 textInput.focus();
 quizToggle.checked = settings.quizEnabled;
@@ -244,7 +250,7 @@ Promise.all([
     const q = new URLSearchParams(location.search).get('q');
     if (q && !textInput.value) textInput.value = q;
     renderChars();
-    if (!textInput.value) maybeShowDemo();
+    if (!textInput.value) showDemo();
   })
   .catch(() => {
     loading.textContent = '笔顺数据加载失败，请刷新重试';
@@ -266,6 +272,7 @@ function extractChars(text: string): string[] {
 function renderChars() {
   const chars = extractChars(textInput.value);
   if (chars.length > 0) hideDemo();
+  else if (loading.hidden) showDemo(); // 清空输入回到空白态时，演示重新出现
   charGrid.innerHTML = '';
   emptyHint.hidden = chars.length > 0;
   const cardOf = new Map<string, HTMLButtonElement>();
@@ -321,20 +328,18 @@ textInput.addEventListener('input', () => {
   renderTimer = window.setTimeout(renderChars, 200);
 });
 
-// ---------- 首次访问演示：用一张预渲染的 GIF 教用户"点字看笔顺"，不占用 emptyHint 的位置 ----------
+// ---------- 演示：用一张循环播放的 GIF 教用户"点字看笔顺" ----------
 // GIF 由 scripts/make-demo-gif.mjs 预先生成（public/demo-bi.gif），与应用内
 // HanziWriter 的实时渲染逻辑完全独立，互不影响。
-const DEMO_SEEN_KEY = 'bishun-demo-seen';
+// 展示条件：只要用户当前没有输入内容就展示——每次进主页立即展示，
+// 借空白期反复强化"点字看笔顺"这一核心用法，占领用户心智；输入后隐藏。
 const emptyDemo = $('#empty-demo');
 
 function hideDemo() {
   if (!emptyDemo.hidden) emptyDemo.hidden = true;
 }
 
-function maybeShowDemo() {
-  if (localStorage.getItem(DEMO_SEEN_KEY)) return;
-  // 标记为已展示：确保无论刷新与否，这个演示一生只播一次
-  localStorage.setItem(DEMO_SEEN_KEY, '1');
+function showDemo() {
   emptyDemo.hidden = false;
 }
 
@@ -570,8 +575,7 @@ $('#trad-cancel').addEventListener('click', () => {
   tradPrompt.hidden = true;
 });
 
-// ---------- 添加到主屏幕引导 ----------
-const INSTALL_DISMISS_KEY = 'bishun-install-dismissed';
+// ---------- 添加到主屏幕引导（仅从设置项触发，不在加载时自动弹出打扰用户） ----------
 const installBanner = $('#install-banner');
 const installBtn = $<HTMLButtonElement>('#install-btn');
 let deferredInstall: (Event & { prompt: () => Promise<void> }) | null = null;
@@ -607,9 +611,6 @@ function androidBrowserSteps(): string {
 }
 
 function setupInstallBanner() {
-  // ?clean 用于截图/嵌入场景，不显示安装引导
-  if (new URLSearchParams(location.search).has('clean')) return;
-  if (isStandalone() || localStorage.getItem(INSTALL_DISMISS_KEY)) return;
   const ua = navigator.userAgent;
   const isIOS = /iPhone|iPad|iPod/.test(ua);
   const isAndroid = /Android/.test(ua);
@@ -628,14 +629,14 @@ function setupInstallBanner() {
       ? '用 Safari 打开 → 点底部 分享按钮 ⬆️ → 选「添加到主屏幕」'
       : isAndroid
         ? androidBrowserSteps()
-        : '手机浏览器打开本页，按提示添加到主屏幕；电脑 Chrome 可点地址栏的安装图标';
+        : '用手机浏览器打开本页效果最佳；电脑 Chrome 可点地址栏右侧的安装图标';
     $('#install-steps').textContent = steps;
     copyBtn.classList.remove('install-primary');
   }
   installBanner.hidden = false;
 }
 
-// 复制本页链接（去掉 ?q=/?clean 等临时参数），方便在 App 内浏览器里跳转到系统浏览器打开
+// 复制本页链接（去掉 ?q= 等临时参数），方便在 App 内浏览器里跳转到系统浏览器打开
 async function copyPageUrl() {
   const url = `${location.origin}${location.pathname}`;
   try {
@@ -675,11 +676,10 @@ installBtn.addEventListener('click', async () => {
 });
 
 $('#install-dismiss').addEventListener('click', () => {
-  localStorage.setItem(INSTALL_DISMISS_KEY, '1');
   installBanner.hidden = true;
 });
 
-// 设置里的常驻入口：误点过"知道了"的用户也能再次唤起引导
+// 引导条的唯一入口：设置 → 添加到主屏幕
 $('#add-home-btn').addEventListener('click', async () => {
   if (isStandalone()) {
     showToast('已经是主屏幕应用啦 🎉');
@@ -691,7 +691,6 @@ $('#add-home-btn').addEventListener('click', async () => {
     deferredInstall = null;
     return;
   }
-  localStorage.removeItem(INSTALL_DISMISS_KEY);
   $('#settings-panel').hidden = true;
   setupInstallBanner();
 });

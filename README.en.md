@@ -15,8 +15,8 @@ Unlike stroke-order websites that require one online query per character, this t
 ## ✨ Features
 
 - **Paragraph input**: paste any text; Han characters are extracted and deduplicated into tappable cards
-- **First-visit demo**: a tiny GIF of "笔" being drawn plays once in the blank area (pre-rendered by `scripts/make-demo-gif.mjs`, fully independent from the app's live HanziWriter rendering) to teach new users "tap a character to see its stroke order"
-- **Stroke-order animation**: looping demo in a practice grid, radical highlighted in red, speed ×0.5 / ×1 / ×2
+- **First-use demo**: until you type something for the first time, a tiny GIF of "笔" being drawn (plays once; pre-rendered by `scripts/make-demo-gif.mjs`, fully independent from the app's live HanziWriter rendering) appears in the blank area to teach new users "tap a character to see its stroke order"
+- **Stroke-order animation**: looping demo in a practice grid, radical highlighted in red, speed ×0.5 / ×1 / ×1.5
 - **Character info**: pinyin (incl. polyphones), stroke count, radical, structure (left-right / top-bottom / enclosure…), stroke names
 - **Tracing practice** (optional, off by default): trace each stroke with your finger; wrong strokes prompt a retry
 - **Fully offline**: the Service Worker precaches ~20MB of stroke data (~8MB gzipped, downloaded once)
@@ -27,10 +27,10 @@ Unlike stroke-order websites that require one online query per character, this t
 ## 📱 Install on your phone
 
 1. Open https://dezhaohe.github.io/bishun/ in your mobile browser
-2. iOS Safari: Share → **Add to Home Screen**; Android: the app detects your phone's brand (Xiaomi/OPPO/vivo/Huawei/Samsung/…) and shows menu steps for its default browser
+2. Tap **Settings ⚙ → Add to Home Screen** in the app: on iOS it walks you through Safari's share menu; on Android it detects your phone's brand (Xiaomi/OPPO/vivo/Huawei/Samsung/…) and shows menu steps for its default browser
 3. Launch from the home-screen icon — works without a network connection (do the first visit on Wi-Fi)
 
-> Opened inside WeChat/QQ/Weibo etc.? Adding to home screen isn't possible from an in-app browser (a platform limitation) — the app will offer a "copy link" button so you can paste the URL into a real browser (Safari/Chrome/…) and continue there.
+> Opened inside WeChat/QQ/Weibo etc.? Adding to home screen isn't possible from an in-app browser (a platform limitation) — "Settings → Add to Home Screen" offers a "copy link" button so you can paste the URL into a real browser (Safari/Chrome/…) and continue there.
 
 ## 🚀 Development
 
