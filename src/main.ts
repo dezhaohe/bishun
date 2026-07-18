@@ -205,6 +205,7 @@ const quizToggle = $<HTMLInputElement>('#quiz-toggle');
 const quizBtn = $<HTMLButtonElement>('#quiz-btn');
 const quizHint = $('#quiz-hint');
 const speedSelect = $<HTMLSelectElement>('#speed-select');
+const emptyDemo = $('#empty-demo');
 
 speedSelect.value = String(settings.speed);
 if (speedSelect.value !== String(settings.speed)) {
@@ -220,7 +221,9 @@ quizToggle.checked = settings.quizEnabled;
 // ---------- 数据加载 ----------
 const dataUrl = (name: string) => `${import.meta.env.BASE_URL}data/${name}`;
 
-// 扩展包走 CacheFirst 缓存，内容更新时必须升版本号换 URL，否则老用户永远拿到旧包
+// 基础包与扩展包都走 CacheFirst 运行时缓存（不再预缓存，避免首访被重复下载）。
+// 内容更新时必须升版本号换 URL，否则老用户永远拿到旧包（例如修正某字笔顺后无法推送）。
+const STROKES_PACK_VERSION = 1;
 const TRAD_PACK_VERSION = 3;
 
 async function fetchTradPack(): Promise<StrokeMap> {
@@ -229,28 +232,38 @@ async function fetchTradPack(): Promise<StrokeMap> {
   return r.json();
 }
 
+// 首屏立即显示演示 GIF：GIF 仅 11KB，而字库 strokes.json 有 20MB，绝不能让
+// 字库下载阻塞演示动画的显示。二者并行，互不阻塞——演示先出现，字库在后台下载。
+// 这里同步读取 ?q= 预填参数（可分享带内容的链接），据此决定是否展示演示。
+{
+  const q = new URLSearchParams(location.search).get('q');
+  if (q && !textInput.value) textInput.value = q;
+  if (!textInput.value) showDemo();
+}
+
 Promise.all([
-  fetch(dataUrl('strokes.json')).then((r) => r.json()),
+  fetch(dataUrl(`strokes.json?v=${STROKES_PACK_VERSION}`)).then((r) => r.json()),
   fetch(dataUrl('trad-index.json')).then((r) => r.json()).catch(() => ''),
 ])
-  .then(async ([data, index]: [StrokeMap, string]) => {
+  .then(([data, index]: [StrokeMap, string]) => {
     strokeData = data;
     tradIndex = new Set(index);
-    // 下载过扩展包的用户，启动时自动加载（Service Worker 已缓存，离线可用）
-    if (localStorage.getItem(TRAD_KEY)) {
-      try {
-        Object.assign(strokeData, await fetchTradPack());
-      } catch {
-        /* 下次启动再试 */
-      }
-    }
     loading.hidden = true;
     updateTradStatus();
-    // 支持 ?q=文本 预填（可分享带内容的链接）
-    const q = new URLSearchParams(location.search).get('q');
-    if (q && !textInput.value) textInput.value = q;
     renderChars();
     if (!textInput.value) showDemo();
+    // 下载过扩展包的用户，启动时后台异步加载（10MB，Service Worker 已缓存，离线可用）；
+    // 不 await，避免扩展包阻塞基础字库的渲染，加载完成后再重绘一次
+    if (localStorage.getItem(TRAD_KEY)) {
+      fetchTradPack()
+        .then((pack) => {
+          Object.assign(strokeData, pack);
+          renderChars();
+        })
+        .catch(() => {
+          /* 下次启动再试 */
+        });
+    }
   })
   .catch(() => {
     loading.textContent = '笔顺数据加载失败，请刷新重试';
@@ -333,8 +346,6 @@ textInput.addEventListener('input', () => {
 // HanziWriter 的实时渲染逻辑完全独立，互不影响。
 // 展示条件：只要用户当前没有输入内容就展示——每次进主页立即展示，
 // 借空白期反复强化"点字看笔顺"这一核心用法，占领用户心智；输入后隐藏。
-const emptyDemo = $('#empty-demo');
-
 function hideDemo() {
   if (!emptyDemo.hidden) emptyDemo.hidden = true;
 }
