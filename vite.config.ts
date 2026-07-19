@@ -1,9 +1,24 @@
 import { defineConfig } from 'vite';
+import { statSync } from 'node:fs';
 import { VitePWA } from 'vite-plugin-pwa';
+
+// 数据包由 prebuild/predev 的 build-data.mjs 先行生成，这里读取其解压后字节数，
+// 注入到前端用于计算加载进度百分比（读取失败则注入 0，前端会退化为不显示百分比）。
+const dataBytes = (name: string) => {
+  try {
+    return statSync(`public/data/${name}`).size;
+  } catch {
+    return 0;
+  }
+};
 
 export default defineConfig({
   base: './',
   server: { port: 5175 },
+  define: {
+    __CORE_BYTES__: JSON.stringify(dataBytes('strokes-core.json')),
+    __MORE_BYTES__: JSON.stringify(dataBytes('strokes-more.json')),
+  },
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
@@ -12,7 +27,7 @@ export default defineConfig({
         // 只预缓存体积小、离线首屏必需的应用外壳（HTML / 图标 / manifest）。
         // 关键：凡是页面运行时会自己请求的资源（字库 JSON、演示 GIF、JS/CSS）一律不预缓存，
         // 否则 Service Worker 首次安装时会与页面并行地再下载一遍，导致每个资源在首访时被请求两次
-        // （strokes.json 20MB 会被下载两次 = 40MB）。这些资源改由下面的 runtimeCaching 在页面
+        // （字库那种大文件会被白白下载两遍）。这些资源改由下面的 runtimeCaching 在页面
         // 自身请求时顺带写入缓存——只请求一次，之后离线可用。
         globPatterns: ['**/*.{html,svg,png,webmanifest}'],
         runtimeCaching: [
@@ -32,12 +47,13 @@ export default defineConfig({
             options: { cacheName: 'bishun-trad-pack' },
           },
           {
-            // 基础字库（约 20MB）：缓存优先，只下载一次；内容更新时须升 STROKES_PACK_VERSION 换 URL
-            urlPattern: /strokes\.json/,
+            // 基础字库：核心包（常用字，首屏）+ 扩充包（其余，后台）。缓存优先，各只下载一次；
+            // 内容更新时须升 CORE_PACK_VERSION / MORE_PACK_VERSION 换 URL
+            urlPattern: /strokes-(core|more)\.json/,
             handler: 'CacheFirst',
             options: {
               cacheName: 'bishun-base-pack',
-              expiration: { maxEntries: 4 },
+              expiration: { maxEntries: 6 },
             },
           },
           {

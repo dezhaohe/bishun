@@ -1,7 +1,9 @@
-// 从 hanzi-writer-data 生成两个数据包：
-//  - strokes.json      基础包：《通用规范汉字表》中有数据的字（随应用预缓存）
+// 从 hanzi-writer-data 生成数据包：
+//  - strokes-core.json 核心包：最常用字（首屏阻塞加载，尽量小）
+//  - strokes-more.json 扩充包：其余基础字（二级/三级规范字，首屏后台加载）
 //  - strokes-trad.json 扩展包：其余的字（繁体、粤语和生僻字），用户按需下载
-//  - trad-index.json   扩展包字表索引（几 KB，随应用预缓存，用于识别"可下载"的字）
+//  - trad-index.json   扩展包字表索引（几 KB，随应用外壳预缓存，用于识别"可下载"的字）
+// 核心包 + 扩充包 = 原来的基础包；拆分只为让首屏更快，总字数不变。
 import { readFileSync, writeFileSync, mkdirSync, readdirSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -20,13 +22,17 @@ const read = (ch) => JSON.parse(readFileSync(join(dataDir, `${ch}.json`), 'utf8'
 const compact = (map) =>
   JSON.stringify(map).replace(/-?\d+\.\d+/g, (n) => String(Math.round(Number(n))));
 
-// 基础包
-const base = {};
+// 基础包按字频（字表已按一级→二级→三级排序）拆成核心包 + 扩充包：
+// 前 CORE_COUNT 个「有数据」的字进核心包（首屏加载），其余进扩充包（后台加载）。
+const CORE_COUNT = Number(process.env.CORE_COUNT) || 2500;
+const core = {};
+const more = {};
 const baseSet = new Set();
 let missing = 0;
 for (const ch of chars) {
   if (existsSync(join(dataDir, `${ch}.json`))) {
-    base[ch] = read(ch);
+    if (baseSet.size < CORE_COUNT) core[ch] = read(ch);
+    else more[ch] = read(ch);
     baseSet.add(ch);
   } else {
     missing++;
@@ -53,13 +59,16 @@ for (const [ch, data] of Object.entries(canto)) {
 }
 
 mkdirSync(outDir, { recursive: true });
-const baseJson = compact(base);
+const coreJson = compact(core);
+const moreJson = compact(more);
 const tradJson = compact(trad);
-writeFileSync(join(outDir, 'strokes.json'), baseJson);
+writeFileSync(join(outDir, 'strokes-core.json'), coreJson);
+writeFileSync(join(outDir, 'strokes-more.json'), moreJson);
 writeFileSync(join(outDir, 'strokes-trad.json'), tradJson);
 writeFileSync(join(outDir, 'trad-index.json'), JSON.stringify(Object.keys(trad).join('')));
 
 const mb = (s) => (s.length / 1024 / 1024).toFixed(1);
-console.log(`基础包 strokes.json: ${baseSet.size} 字, ${mb(baseJson)} MB`);
+console.log(`核心包 strokes-core.json: ${Object.keys(core).length} 字, ${mb(coreJson)} MB`);
+console.log(`扩充包 strokes-more.json: ${Object.keys(more).length} 字, ${mb(moreJson)} MB`);
 console.log(`扩展包 strokes-trad.json: ${Object.keys(trad).length} 字, ${mb(tradJson)} MB（含合成粤语字 ${cantoCount} 个）`);
 if (missing) console.warn(`规范字表中缺数据的字: ${missing} 个（数据源未覆盖，多为三级生僻字）`);

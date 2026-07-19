@@ -35,6 +35,13 @@ function saveSettings(s: Settings) {
 const settings = loadSettings();
 let strokeData: StrokeMap = {};
 let tradIndex = new Set<string>();
+// 扩充包（其余基础字）后台加载状态：用于首访空窗期正确处理点击与字卡样式
+let baseMoreReady = false;
+let baseMorePromise: Promise<void> | null = null;
+let coreReady = false; // 核心包是否就绪（决定清空输入后是否重新展示演示）
+// 由 vite.config 在构建时注入的两个数据包解压后字节数，用于计算加载进度百分比
+declare const __CORE_BYTES__: number;
+declare const __MORE_BYTES__: number;
 const TRAD_KEY = 'bishun-trad-downloaded';
 let writer: HanziWriter | null = null;
 let currentChar = '';
@@ -221,18 +228,72 @@ quizToggle.checked = settings.quizEnabled;
 // ---------- 数据加载 ----------
 const dataUrl = (name: string) => `${import.meta.env.BASE_URL}data/${name}`;
 
-// 基础包与扩展包都走 CacheFirst 运行时缓存（不再预缓存，避免首访被重复下载）。
-// 内容更新时必须升版本号换 URL，否则老用户永远拿到旧包（例如修正某字笔顺后无法推送）。
-const STROKES_PACK_VERSION = 1;
+// 各数据包都走 CacheFirst 运行时缓存（不再预缓存，避免首访被重复下载）。
+// 内容更新时必须升对应版本号换 URL，否则老用户永远拿到旧包（例如修正某字笔顺后无法推送）。
+const CORE_PACK_VERSION = 1;
+const MORE_PACK_VERSION = 1;
 const TRAD_PACK_VERSION = 3;
 
-async function fetchTradPack(): Promise<StrokeMap> {
-  const r = await fetch(dataUrl(`strokes-trad.json?v=${TRAD_PACK_VERSION}`));
+async function fetchPack(name: string, version: number): Promise<StrokeMap> {
+  const r = await fetch(dataUrl(`${name}?v=${version}`));
   if (!r.ok) throw new Error(String(r.status));
   return r.json();
 }
+const fetchTradPack = () => fetchPack('strokes-trad.json', TRAD_PACK_VERSION);
 
-// 首屏立即显示演示 GIF：GIF 仅 11KB，而字库 strokes.json 有 20MB，绝不能让
+// 边下边报告已接收字节数的版本：用流式读取实现加载进度。onBytes 收到的是解压后累计字节，
+// 与构建时注入的解压后总大小（__CORE_BYTES__/__MORE_BYTES__）对应，可算出准确百分比。
+async function fetchPackWithProgress(
+  name: string,
+  version: number,
+  onBytes: (receivedTotal: number) => void
+): Promise<StrokeMap> {
+  const r = await fetch(dataUrl(`${name}?v=${version}`));
+  if (!r.ok) throw new Error(String(r.status));
+  if (!r.body) return r.json(); // 极老浏览器无流式 body，退化为普通读取
+  const reader = r.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let received = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    if (value) {
+      chunks.push(value);
+      received += value.length;
+      onBytes(received);
+    }
+  }
+  let size = 0;
+  for (const c of chunks) size += c.length;
+  const buf = new Uint8Array(size);
+  let off = 0;
+  for (const c of chunks) {
+    buf.set(c, off);
+    off += c.length;
+  }
+  return JSON.parse(new TextDecoder().decode(buf));
+}
+
+// ---------- 字库加载进度（底部提示条） ----------
+// 核心包 + 扩充包合计为一条 0→100% 的进度；核心包就绪后文案切到"完整字库"，进度不回退。
+const CORE_BYTES = __CORE_BYTES__ || 0;
+const MORE_BYTES = __MORE_BYTES__ || 0;
+const TOTAL_BYTES = CORE_BYTES + MORE_BYTES;
+let coreBytesGot = 0;
+let moreBytesGot = 0;
+function renderLoadingProgress() {
+  if (loading.hidden) return;
+  const label = coreReady ? '正在加载完整字库' : '正在加载常用字库';
+  if (TOTAL_BYTES > 0) {
+    const pct = Math.min(100, Math.floor(((coreBytesGot + moreBytesGot) / TOTAL_BYTES) * 100));
+    loading.textContent = `${label}… ${pct}%`;
+    loading.style.setProperty('--progress', `${pct}%`);
+  } else {
+    loading.textContent = `${label}…`;
+  }
+}
+
+// 首屏立即显示演示 GIF：GIF 仅 11KB，而核心字库有 2MB 级，绝不能让
 // 字库下载阻塞演示动画的显示。二者并行，互不阻塞——演示先出现，字库在后台下载。
 // 这里同步读取 ?q= 预填参数（可分享带内容的链接），据此决定是否展示演示。
 {
@@ -241,18 +302,43 @@ async function fetchTradPack(): Promise<StrokeMap> {
   if (!textInput.value) showDemo();
 }
 
+renderLoadingProgress(); // 初始 0%
+
 Promise.all([
-  fetch(dataUrl(`strokes.json?v=${STROKES_PACK_VERSION}`)).then((r) => r.json()),
+  fetchPackWithProgress('strokes-core.json', CORE_PACK_VERSION, (n) => {
+    coreBytesGot = n;
+    renderLoadingProgress();
+  }),
   fetch(dataUrl('trad-index.json')).then((r) => r.json()).catch(() => ''),
 ])
-  .then(([data, index]: [StrokeMap, string]) => {
-    strokeData = data;
+  .then(([core, index]: [StrokeMap, string]) => {
+    strokeData = core;
     tradIndex = new Set(index);
-    loading.hidden = true;
+    coreReady = true;
+    coreBytesGot = CORE_BYTES; // 核心包按满额计入，避免估算误差导致进度停在 99%
+    renderLoadingProgress();
     updateTradStatus();
     renderChars();
     if (!textInput.value) showDemo();
-    // 下载过扩展包的用户，启动时后台异步加载（10MB，Service Worker 已缓存，离线可用）；
+
+    // 其余基础字（二级/三级规范字）后台并行加载，不阻塞首屏；进度条继续走到 100%，到位后合并重绘
+    baseMorePromise = fetchPackWithProgress('strokes-more.json', MORE_PACK_VERSION, (n) => {
+      moreBytesGot = n;
+      renderLoadingProgress();
+    })
+      .then((more) => {
+        Object.assign(strokeData, more);
+        baseMoreReady = true;
+        loading.hidden = true; // 全部基础字就绪，收起进度条
+        renderChars();
+      })
+      .catch(() => {
+        // 下次启动再试；仍标记为就绪，避免点击时一直卡在"加载中"提示
+        baseMoreReady = true;
+        loading.hidden = true;
+      });
+
+    // 下载过扩展包的用户，启动时后台异步加载（Service Worker 已缓存，离线可用）；
     // 不 await，避免扩展包阻塞基础字库的渲染，加载完成后再重绘一次
     if (localStorage.getItem(TRAD_KEY)) {
       fetchTradPack()
@@ -266,6 +352,8 @@ Promise.all([
     }
   })
   .catch(() => {
+    loading.hidden = false;
+    loading.style.removeProperty('--progress');
     loading.textContent = '笔顺数据加载失败，请刷新重试';
   });
 
@@ -282,10 +370,21 @@ function extractChars(text: string): string[] {
   return out;
 }
 
+// 选中并展示某字：从当前 DOM 里找对应字卡（后台加载重绘后，旧闭包里的按钮已失效，
+// 所以按字符实时查找，保证高亮的是当前可见的卡片）
+function openChar(ch: string) {
+  document.querySelectorAll('.char-card.active').forEach((el) => el.classList.remove('active'));
+  const card = [...charGrid.querySelectorAll<HTMLButtonElement>('.char-card')].find(
+    (b) => b.textContent === ch
+  );
+  card?.classList.add('active');
+  showDetail(ch);
+}
+
 function renderChars() {
   const chars = extractChars(textInput.value);
   if (chars.length > 0) hideDemo();
-  else if (loading.hidden) showDemo(); // 清空输入回到空白态时，演示重新出现
+  else if (coreReady) showDemo(); // 清空输入回到空白态时，演示重新出现
   charGrid.innerHTML = '';
   emptyHint.hidden = chars.length > 0;
   const cardOf = new Map<string, HTMLButtonElement>();
@@ -299,17 +398,27 @@ function renderChars() {
       btn.classList.add('trad');
       btn.title = '可下载扩展字库查看';
     } else if (!available) {
-      btn.classList.add('unavailable');
-      btn.title = '暂无笔顺数据';
+      if (baseMoreReady) {
+        btn.classList.add('unavailable');
+        btn.title = '暂无笔顺数据';
+      } else {
+        // 扩充包仍在后台加载，可能马上就能查——先不标灰，避免常用字误判为生僻字
+        btn.title = '字库加载中…';
+      }
     }
     btn.addEventListener('click', () => {
       if (ch in strokeData) {
-        // 已可查（含下载扩展包后的情况）
-        document.querySelectorAll('.char-card.active').forEach((el) => el.classList.remove('active'));
-        btn.classList.add('active');
-        showDetail(ch);
+        openChar(ch); // 已可查（含扩充包/扩展包加载后的情况）
       } else if (tradIndex.has(ch)) {
         showTradPrompt(ch);
+      } else if (!baseMoreReady && baseMorePromise) {
+        // 首访空窗期：其余基础字还在后台加载，到位后自动打开
+        showToast('字库加载中，请稍候…');
+        baseMorePromise.then(() => {
+          if (ch in strokeData) openChar(ch);
+          else if (tradIndex.has(ch)) showTradPrompt(ch);
+          else showToast(`「${ch}」暂无笔顺数据（生僻字）`);
+        });
       } else {
         showToast(`「${ch}」暂无笔顺数据（生僻字）`);
       }
