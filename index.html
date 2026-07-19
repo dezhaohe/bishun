@@ -15,11 +15,21 @@
   <body>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
-    <!-- 匿名访问统计（GoatCounter，无 cookie / 不收集个人信息）；异步加载，失败静默，不影响主功能与离线使用 -->
-    <script
-      data-goatcounter="https://winstonho.goatcounter.com/count"
-      async
-      src="//gc.zgo.at/count.js"
-    ></script>
+    <!-- 匿名访问统计（GoatCounter，无 cookie / 不收集个人信息）；失败静默，不影响主功能与离线使用。
+         count.js 是第三方脚本（需额外 DNS/TLS，耗时较长），即使 async 也会在解析时就抢占网络，
+         拖慢首屏字库等关键资源。这里推迟到 window load 之后、浏览器空闲时再注入，尽量放到最后。 -->
+    <script>
+      addEventListener('load', function () {
+        var inject = function () {
+          var s = document.createElement('script');
+          s.async = true;
+          s.src = '//gc.zgo.at/count.js';
+          s.setAttribute('data-goatcounter', 'https://winstonho.goatcounter.com/count');
+          document.body.appendChild(s);
+        };
+        if ('requestIdleCallback' in window) requestIdleCallback(inject, { timeout: 3000 });
+        else setTimeout(inject, 2000);
+      });
+    </script>
   </body>
 </html>
