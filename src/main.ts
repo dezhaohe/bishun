@@ -23,9 +23,9 @@ interface Settings {
 }
 function loadSettings(): Settings {
   try {
-    return { quizEnabled: false, speed: 1, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
+    return { quizEnabled: false, speed: 0.75, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
   } catch {
-    return { quizEnabled: false, speed: 1 };
+    return { quizEnabled: false, speed: 0.75 };
   }
 }
 function saveSettings(s: Settings) {
@@ -51,7 +51,10 @@ const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
   <header class="topbar">
     <h1>笔顺随身查</h1>
-    <button id="settings-btn" class="icon-btn" aria-label="设置">⚙</button>
+    <div class="topbar-right">
+      <span id="char-count" class="char-count" hidden>0 字</span>
+      <button id="settings-btn" class="icon-btn" aria-label="设置">⚙</button>
+    </div>
   </header>
 
   <div id="settings-panel" class="settings-page" hidden>
@@ -91,12 +94,13 @@ app.innerHTML = `
       <label class="setting-item">
         <span class="setting-label">
           <span>笔顺动画速度</span>
-          <small>默认 ×1.0</small>
+          <small>默认 ×0.75</small>
         </span>
         <select id="speed-select">
           <option value="0.5">×0.5</option>
+          <option value="0.75">×0.75</option>
           <option value="1">×1.0</option>
-          <option value="1.5">×1.5</option>
+          <option value="1.25">×1.25</option>
         </select>
       </label>
     </div>
@@ -133,6 +137,7 @@ app.innerHTML = `
 
   <section class="input-area">
     <textarea id="text-input" rows="2" placeholder="请输入一个字或一段话让我识别吧。使用语音输入会更快哦 🎤" autocomplete="off" autofocus></textarea>
+    <button id="clear-btn" class="clear-btn" type="button" aria-label="清除输入" title="清除输入" hidden>✕</button>
   </section>
 
   <section id="char-grid" class="char-grid"></section>
@@ -204,6 +209,8 @@ app.innerHTML = `
 
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const textInput = $<HTMLTextAreaElement>('#text-input');
+const clearBtn = $<HTMLButtonElement>('#clear-btn');
+const charCount = $('#char-count');
 const charGrid = $('#char-grid');
 const emptyHint = $('#empty-hint');
 const detail = $('#detail');
@@ -216,9 +223,9 @@ const emptyDemo = $('#empty-demo');
 
 speedSelect.value = String(settings.speed);
 if (speedSelect.value !== String(settings.speed)) {
-  // 旧版本存在 ×2 挡位，已下线（改为 ×1.5）；旧存档值在此兜底回退到默认速度
-  settings.speed = 1;
-  speedSelect.value = '1';
+  // 挡位调整过（旧版有 ×1.5/×2，现为 0.5/0.75/1.0/1.25）；旧存档里已下线的值在此兜底回退到默认速度
+  settings.speed = 0.75;
+  speedSelect.value = '0.75';
   saveSettings(settings);
 }
 // 抢占输入焦点，光标闪烁引导用户直接开始输入（innerHTML 插入的 autofocus 属性不会自动生效，需手动 focus）
@@ -358,37 +365,53 @@ Promise.all([
   });
 
 // ---------- 汉字提取与字卡 ----------
-function extractChars(text: string): string[] {
-  const seen = new Set<string>();
-  const out: string[] = [];
-  for (const ch of text.match(/\p{Script=Han}/gu) ?? []) {
-    if (!seen.has(ch)) {
-      seen.add(ch);
-      out.push(ch);
-    }
+// 按用户输入原样切分为一个个字块（不去重、保持顺序）：汉字可点击查笔顺，
+// 其余非空白字符（标点、字母、数字等）各占一个不可点击的方块，空白字符跳过。
+interface Token {
+  ch: string;
+  han: boolean; // true=汉字（可点击）
+}
+const isHan = (ch: string) => /\p{Script=Han}/u.test(ch);
+// 传入的是"按换行切好的单个段落"，故不含 \n；行内的空格/制表符原样保留为占位块，
+// 让字块区与输入框逐字符一一对应（空格 → 一个不可点击的空块）。
+function tokenize(text: string): Token[] {
+  const out: Token[] = [];
+  for (const ch of text) {
+    // 用 for...of 按 Unicode 码点遍历，正确处理超出 BMP 的生僻字（代理对）
+    out.push({ ch, han: isHan(ch) });
   }
   return out;
 }
 
-// 选中并展示某字：从当前 DOM 里找对应字卡（后台加载重绘后，旧闭包里的按钮已失效，
-// 所以按字符实时查找，保证高亮的是当前可见的卡片）
-function openChar(ch: string) {
+// 选中并高亮某字卡后展示详情（传入被点击的卡片，保证高亮的是用户实际点的那张，
+// 而非同一个字的其他重复卡片）
+function openChar(ch: string, card?: HTMLElement) {
   document.querySelectorAll('.char-card.active').forEach((el) => el.classList.remove('active'));
-  const card = [...charGrid.querySelectorAll<HTMLButtonElement>('.char-card')].find(
-    (b) => b.textContent === ch
-  );
   card?.classList.add('active');
+  setInputLines(1); // 焦点落到字块区选中某字 → 输入框收成 1 行，让出空间
+  centerSelectedCard(); // 选中行滚到字块区中间，方便点相邻行的下一个字
   showDetail(ch);
 }
 
 function renderChars() {
-  const chars = extractChars(textInput.value);
-  if (chars.length > 0) hideDemo();
+  // 按输入框里的换行分段，与输入框的分段方式保持一致：每个非空段落各起一行字块
+  const segments = textInput.value.split('\n').map(tokenize);
+  const hasContent = segments.some((seg) => seg.length > 0);
+  if (hasContent) hideDemo();
   else if (coreReady) showDemo(); // 清空输入回到空白态时，演示重新出现
   charGrid.innerHTML = '';
-  emptyHint.hidden = chars.length > 0;
-  const cardOf = new Map<string, HTMLButtonElement>();
-  for (const ch of chars) {
+  emptyHint.hidden = hasContent;
+  let firstHanCard: HTMLButtonElement | undefined;
+  let firstCurrentCard: HTMLButtonElement | undefined;
+
+  const buildCard = (ch: string, han: boolean): HTMLElement => {
+    if (!han) {
+      // 标点/字母/数字等：只展示、不可点击
+      const span = document.createElement('span');
+      span.className = 'char-card punct';
+      span.textContent = ch;
+      return span;
+    }
     const btn = document.createElement('button');
     btn.className = 'char-card';
     btn.textContent = ch;
@@ -408,14 +431,14 @@ function renderChars() {
     }
     btn.addEventListener('click', () => {
       if (ch in strokeData) {
-        openChar(ch); // 已可查（含扩充包/扩展包加载后的情况）
+        openChar(ch, btn); // 已可查（含扩充包/扩展包加载后的情况）
       } else if (tradIndex.has(ch)) {
         showTradPrompt(ch);
       } else if (!baseMoreReady && baseMorePromise) {
         // 首访空窗期：其余基础字还在后台加载，到位后自动打开
         showToast('字库加载中，请稍候…');
         baseMorePromise.then(() => {
-          if (ch in strokeData) openChar(ch);
+          if (ch in strokeData) openChar(ch, btn);
           else if (tradIndex.has(ch)) showTradPrompt(ch);
           else showToast(`「${ch}」暂无笔顺数据（生僻字）`);
         });
@@ -423,32 +446,113 @@ function renderChars() {
         showToast(`「${ch}」暂无笔顺数据（生僻字）`);
       }
     });
-    charGrid.appendChild(btn);
-    cardOf.set(ch, btn);
+    if (available && !firstHanCard) firstHanCard = btn;
+    if (ch === currentChar && available && !firstCurrentCard) firstCurrentCard = btn;
+    return btn;
+  };
+
+  for (const seg of segments) {
+    if (seg.length === 0) continue; // 空段落不生成空行
+    const lineEl = document.createElement('div');
+    lineEl.className = 'char-line';
+    for (const { ch, han } of seg) lineEl.appendChild(buildCard(ch, han));
+    charGrid.appendChild(lineEl);
   }
 
   // 识别后自动展示：正在查看的字仍在列表中则保持选中，否则默认选中第一个可查的字
-  const keepCurrent =
-    !detail.hidden && currentChar && chars.includes(currentChar) && currentChar in strokeData;
-  if (keepCurrent) {
-    cardOf.get(currentChar)?.classList.add('active');
+  if (!detail.hidden && currentChar && firstCurrentCard) {
+    firstCurrentCard.classList.add('active');
+  } else if (firstHanCard) {
+    firstHanCard.classList.add('active');
+    showDetail(firstHanCard.textContent!, { scroll: false });
   } else {
-    const first = chars.find((c) => c in strokeData);
-    if (first) {
-      cardOf.get(first)?.classList.add('active');
-      showDetail(first, { scroll: false });
-    } else {
-      detail.hidden = true;
-    }
+    detail.hidden = true;
   }
+
+  fitGridHeight();
+}
+
+// 字块区固定为最多 3 行高：超过后区内上下滚动，把选中字和下方笔顺区始终留在同一屏。
+// 卡片是正方形（宽随视口变化），故按实际渲染出的卡片高度实时计算 3 行的像素高度。
+function fitGridHeight() {
+  const first = charGrid.querySelector<HTMLElement>('.char-card');
+  if (!first) {
+    charGrid.style.maxHeight = '';
+    charGrid.style.overflowY = '';
+    return;
+  }
+  const cardH = first.getBoundingClientRect().height;
+  const line = charGrid.querySelector<HTMLElement>('.char-line');
+  const gap = line ? parseFloat(getComputedStyle(line).rowGap) || 8 : 8;
+  charGrid.style.maxHeight = `${cardH * 3 + gap * 2}px`;
+  charGrid.style.overflowY = 'auto';
+}
+
+// 把当前选中的字卡所在行滚到字块区中间：内容超过一屏（可滚动）时才动，
+// 让被选中行上下都留出空间，用户更容易点到相邻行的下一个字。
+function centerSelectedCard() {
+  if (charGrid.scrollHeight <= charGrid.clientHeight + 1) return; // 未超出、无需滚动
+  const card = charGrid.querySelector<HTMLElement>('.char-card.active');
+  if (!card) return;
+  const gRect = charGrid.getBoundingClientRect();
+  const cRect = card.getBoundingClientRect();
+  const cardTop = cRect.top - gRect.top + charGrid.scrollTop;
+  const target = cardTop - (charGrid.clientHeight - cRect.height) / 2;
+  const max = charGrid.scrollHeight - charGrid.clientHeight;
+  charGrid.scrollTo({ top: Math.max(0, Math.min(target, max)), behavior: 'smooth' });
+}
+// 视口变化时卡片尺寸随之改变，重算 3 行高度（字块内容不变，无需重新识别）
+window.addEventListener('resize', fitGridHeight);
+
+// 输入框高度按焦点在哪切换：光标在输入框时展开到 3 行（打字空间最大），
+// 焦点落到字块区选中某个字时收成 1 行（把空间让给字块区和下方笔顺区）。
+function setInputLines(n: number) {
+  const cs = getComputedStyle(textInput);
+  const line = parseFloat(cs.lineHeight) || 27;
+  const padV = parseFloat(cs.paddingTop) + parseFloat(cs.paddingBottom);
+  const borderV = parseFloat(cs.borderTopWidth) + parseFloat(cs.borderBottomWidth);
+  textInput.style.height = `${line * n + padV + borderV}px`;
+  textInput.style.overflowY = 'auto'; // 内容超过当前行数时可在框内滚动
+}
+
+// 有内容时才显示清除按钮，空白态不干扰
+function syncClearBtn() {
+  clearBtn.hidden = textInput.value.length === 0;
+}
+
+// 字数统计：中文字、标点、字母数字等所有非空白字符都计入（与展示的字块一一对应）
+function syncCharCount() {
+  let n = 0;
+  for (const ch of textInput.value) if (!/\s/u.test(ch)) n++;
+  charCount.hidden = n === 0;
+  charCount.textContent = `${n} 字`;
 }
 
 let renderTimer: number | undefined;
+textInput.addEventListener('focus', () => setInputLines(3)); // 切回输入框 → 展开 3 行
 textInput.addEventListener('input', () => {
   hideDemo(); // 一开始打字就收起首次演示，不用等 debounce
+  syncClearBtn();
+  syncCharCount();
   clearTimeout(renderTimer);
   renderTimer = window.setTimeout(renderChars, 200);
 });
+
+// 清除：清空全部文字，光标回到最前面等待下次输入（focus 会顺带把输入框展开回 3 行）
+clearBtn.addEventListener('click', () => {
+  textInput.value = '';
+  syncClearBtn();
+  syncCharCount();
+  textInput.focus();
+  setInputLines(3);
+  textInput.setSelectionRange(0, 0);
+  renderChars(); // 立即回到空白态并重新展示演示，不等 debounce
+});
+
+// 初始化：autofocus 让输入框处于聚焦态，据此展开 3 行；并按预填内容（?q=）刷新清除钮与字数
+setInputLines(3);
+syncClearBtn();
+syncCharCount();
 
 // ---------- 演示：用一张循环播放的 GIF 教用户"点字看笔顺" ----------
 // GIF 由 scripts/make-demo-gif.mjs 预先生成（public/demo-bi.gif），与应用内

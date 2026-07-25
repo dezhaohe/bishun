@@ -3,3 +3,5 @@ dist/
 public/data/
 dev-dist/
 .DS_Store
+
+.claude/

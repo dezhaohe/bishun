@@ -46,6 +46,19 @@ body {
   cursor: pointer;
   line-height: 1;
 }
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.char-count {
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+.char-count[hidden] {
+  display: none;
+}
 
 .settings-page {
   position: fixed;
@@ -188,18 +201,57 @@ body {
   border-color: var(--accent);
 }
 
+.input-area {
+  position: relative;
+}
 .input-area textarea {
   width: 100%;
   border: 1px solid var(--border);
   border-radius: 12px;
   background: var(--card-bg);
-  padding: 12px 14px;
+  /* 右侧留出清除按钮的位置，避免首行文字被盖住 */
+  padding: 12px 46px 12px 14px;
   font-size: 17px;
   line-height: 1.6;
   color: var(--ink);
-  resize: vertical;
+  /* 高度由脚本按内容在两~三行间自适应，不允许手动拖拽 */
+  resize: none;
   outline: none;
   caret-color: var(--accent);
+}
+.clear-btn {
+  position: absolute;
+  top: 7px;
+  right: 7px;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 50%;
+  /* 比输入框底色明显深一档的灰底，衬托红色 ✕，让清除钮更醒目 */
+  background: #ddd4c8;
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0;
+  box-shadow: 0 1px 3px rgba(44, 62, 80, 0.18);
+}
+.clear-btn::before {
+  /* 把可点击区域撑到 44×44，满足触控目标，同时视觉上仍是小圆钮 */
+  content: '';
+  position: absolute;
+  inset: -7px;
+}
+.clear-btn:active {
+  background: #c9bdae;
+  box-shadow: 0 1px 2px rgba(44, 62, 80, 0.22);
+}
+.clear-btn[hidden] {
+  display: none;
 }
 .input-area textarea::placeholder {
   /* 比正文更淡，一眼能分辨是提示语而不是已填内容 */
@@ -210,10 +262,19 @@ body {
 }
 
 .char-grid {
+  margin-top: 16px;
+  /* 分段容器：每个段落是一个 .char-line，段落之间留出比字块间距更大的间隔以体现分段 */
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  /* 高度上限（最多 3 行）由脚本按实际卡片尺寸设置，这里保证滚动手感顺滑 */
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+.char-line {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(52px, 1fr));
   gap: 8px;
-  margin-top: 16px;
 }
 .char-card {
   aspect-ratio: 1;
@@ -252,6 +313,19 @@ body {
   bottom: 1px;
   font-size: 11px;
   color: var(--accent);
+}
+/* 标点/字母/数字块：只展示、不可点击，视觉上明显区别于可查的汉字卡 */
+.char-card.punct {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+  cursor: default;
+}
+.char-card.punct:active {
+  transform: none;
 }
 
 .empty-hint {
