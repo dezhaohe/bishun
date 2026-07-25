@@ -47,7 +47,7 @@ Requires Node.js ≥ 18.
 
 ## 🔧 Self-hosting
 
-`dist/` is fully static — any HTTPS static host works (GitHub Pages, Vercel, Cloudflare Pages, your own Nginx…). Service Workers require HTTPS (except localhost).
+`dist/` is fully static — any HTTPS static host works (GitHub Pages, Vercel, your own Nginx…). Service Workers require HTTPS (except localhost).
 
 To deploy your fork to GitHub Pages: change the repo URL in the `deploy` script in `package.json`, then run `npm run deploy`.
 

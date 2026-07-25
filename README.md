@@ -47,7 +47,7 @@ npm run preview   # 预览构建产物（含 Service Worker）
 
 ## 🔧 自己部署一份
 
-`dist/` 是纯静态产物，任何支持 HTTPS 的静态托管都能用（GitHub Pages、Vercel、Cloudflare Pages、自建 Nginx…）。Service Worker 要求 HTTPS（localhost 除外）。
+`dist/` 是纯静态产物，任何支持 HTTPS 的静态托管都能用（GitHub Pages、Vercel、自建 Nginx…）。Service Worker 要求 HTTPS（localhost 除外）。
 
 Fork 本仓库后想部署到自己的 GitHub Pages：把 `package.json` 里 `deploy` 脚本中的仓库地址改成你自己的，然后 `npm run deploy`。
 
