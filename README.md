@@ -2,7 +2,7 @@
 
 > 整段识别 · 点字看笔顺 · 离线可用 — 别人逐字查，这里粘贴一段话，点哪个字看哪个字
 
-[English](./README.en.md) | **在线体验：https://dezhaohe.github.io/bishun/**
+[English](./README.en.md) | **在线体验（国内推荐，更快）：https://kids-study.cn/** ｜ 备用：https://dezhaohe.github.io/bishun/
 
 <p align="center">
   <img src="docs/screenshot-main.png" width="260" alt="整段识别，点字看笔顺动画" />
@@ -26,7 +26,7 @@
 
 ## 📱 手机安装（推荐）
 
-1. 手机浏览器打开 https://dezhaohe.github.io/bishun/
+1. 手机浏览器打开 https://kids-study.cn/（国内访问更快；备用地址 https://dezhaohe.github.io/bishun/）
 2. 点应用内 **设置 ⚙ → 添加到主屏幕**：iOS 会提示用 Safari 分享菜单添加；Android 按手机品牌（小米/OPPO/vivo/华为/三星…）给出对应浏览器的操作步骤
 3. 从主屏幕图标打开即是全屏应用，断网可用（建议首次在 WiFi 下打开完成缓存）
 

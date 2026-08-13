@@ -49,6 +49,13 @@ let quizMode = false;
 
 const app = document.querySelector<HTMLDivElement>('#app')!;
 app.innerHTML = `
+  <div id="faster-site" class="faster-site" hidden>
+    <a class="faster-site-main" href="https://kids-study.cn/">
+      <strong>加载慢 / 打不开 / 字库下载不了？</strong>
+      <span>点此换用国内更快的新地址 · kids-study.cn ›</span>
+    </a>
+    <button id="faster-site-close" class="faster-site-close" type="button" aria-label="关闭提示">✕</button>
+  </div>
   <header class="topbar">
     <h1>笔顺随身查</h1>
     <div class="topbar-right">
@@ -232,6 +239,30 @@ if (speedSelect.value !== String(settings.speed)) {
 textInput.focus();
 quizToggle.checked = settings.quizEnabled;
 
+// 「更快域名」提醒：仅在非 kids-study.cn 的旧镜像（github.io / pages.dev 等）上显示，
+// 引导加载慢 / 打不开 / 下不动字库的用户切到国内自托管的新地址；在 kids-study.cn 本站与本地开发时不显示。
+// 点关闭后记住（localStorage），不再打扰。
+{
+  const FAST_HOST = 'kids-study.cn';
+  const host = location.hostname;
+  const onFast = host === FAST_HOST || host === `www.${FAST_HOST}`;
+  const isLocal = host === 'localhost' || host === '127.0.0.1' || host === '';
+  const fasterBanner = document.getElementById('faster-site');
+  if (fasterBanner && !onFast && !isLocal && !localStorage.getItem('bishun-hide-faster')) {
+    const link = fasterBanner.querySelector<HTMLAnchorElement>('.faster-site-main');
+    if (link) link.href = `https://${FAST_HOST}/${location.search}`; // 带上当前输入，切过去无缝继续
+    fasterBanner.hidden = false;
+    document.getElementById('faster-site-close')?.addEventListener('click', () => {
+      fasterBanner.hidden = true;
+      try {
+        localStorage.setItem('bishun-hide-faster', '1');
+      } catch {
+        /* 隐私模式下 localStorage 可能不可用，忽略即可 */
+      }
+    });
+  }
+}
+
 // ---------- 数据加载 ----------
 const dataUrl = (name: string) => `${import.meta.env.BASE_URL}data/${name}`;
 
@@ -282,17 +313,15 @@ async function fetchPackWithProgress(
 }
 
 // ---------- 字库加载进度（底部提示条） ----------
-// 核心包 + 扩充包合计为一条 0→100% 的进度；核心包就绪后文案切到"完整字库"，进度不回退。
+// 进度条只反映「核心包（常用字）」0→100%：核心包一就绪，常用字即可查、进度条随即到 100% 并收起；
+// 扩充包（其余基础字）转入静默后台加载，不再占用可见进度条——避免"核心已就绪却仍显示 28%"的观感。
 const CORE_BYTES = __CORE_BYTES__ || 0;
-const MORE_BYTES = __MORE_BYTES__ || 0;
-const TOTAL_BYTES = CORE_BYTES + MORE_BYTES;
 let coreBytesGot = 0;
-let moreBytesGot = 0;
 function renderLoadingProgress() {
   if (loading.hidden) return;
-  const label = coreReady ? '正在加载完整字库' : '正在加载常用字库';
-  if (TOTAL_BYTES > 0) {
-    const pct = Math.min(100, Math.floor(((coreBytesGot + moreBytesGot) / TOTAL_BYTES) * 100));
+  const label = '正在加载常用字库';
+  if (CORE_BYTES > 0) {
+    const pct = Math.min(100, Math.floor((coreBytesGot / CORE_BYTES) * 100));
     loading.textContent = `${label}… ${pct}%`;
     loading.style.setProperty('--progress', `${pct}%`);
   } else {
@@ -322,27 +351,28 @@ Promise.all([
     strokeData = core;
     tradIndex = new Set(index);
     coreReady = true;
-    coreBytesGot = CORE_BYTES; // 核心包按满额计入，避免估算误差导致进度停在 99%
-    renderLoadingProgress();
+    coreBytesGot = CORE_BYTES; // 核心包满额，进度条到 100%
+    renderLoadingProgress(); // 显示 100%
     updateTradStatus();
     renderChars();
     if (!textInput.value) showDemo();
 
-    // 其余基础字（二级/三级规范字）后台并行加载，不阻塞首屏；进度条继续走到 100%，到位后合并重绘
-    baseMorePromise = fetchPackWithProgress('strokes-more.json', MORE_PACK_VERSION, (n) => {
-      moreBytesGot = n;
-      renderLoadingProgress();
-    })
+    // 核心包就绪 = 常用字已可查；进度条短暂停在 100% 后收起，此后扩充包在后台静默加载
+    setTimeout(() => {
+      loading.hidden = true;
+    }, 400);
+
+    // 其余基础字（二级/三级规范字）静默后台加载，不占用可见进度条；到位后合并重绘。
+    // 空窗期点到尚未就绪的字，点击逻辑已做兜底（到位后自动打开）。
+    baseMorePromise = fetchPack('strokes-more.json', MORE_PACK_VERSION)
       .then((more) => {
         Object.assign(strokeData, more);
         baseMoreReady = true;
-        loading.hidden = true; // 全部基础字就绪，收起进度条
         renderChars();
       })
       .catch(() => {
         // 下次启动再试；仍标记为就绪，避免点击时一直卡在"加载中"提示
         baseMoreReady = true;
-        loading.hidden = true;
       });
 
     // 下载过扩展包的用户，启动时后台异步加载（Service Worker 已缓存，离线可用）；

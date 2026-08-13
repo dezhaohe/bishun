@@ -9,7 +9,8 @@
     "prebuild": "node scripts/build-data.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "deploy": "npm run build && cd dist && git init -q -b gh-pages && git add -A && git -c user.name=dezhaohe -c user.email=dezhaohe@users.noreply.github.com commit -q -m deploy && git push --force https://github.com/dezhaohe/bishun.git gh-pages && cd .. && rm -rf dist/.git"
+    "deploy": "npm run build && cd dist && git init -q -b gh-pages && git add -A && git -c user.name=dezhaohe -c user.email=dezhaohe@users.noreply.github.com commit -q -m deploy && git -c http.postBuffer=524288000 push --force git@github.com:dezhaohe/bishun.git gh-pages && cd .. && rm -rf dist/.git",
+    "deploy:server": "npm run build && tar -C dist -czf - . | ssh -o ControlMaster=no kidstudy 'rm -rf /var/www/kids-study/* && tar -C /var/www/kids-study -xzf -'"
   },
   "dependencies": {
     "cnchar": "^3.2.6",

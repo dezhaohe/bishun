@@ -531,3 +531,51 @@ body {
   opacity: 1;
   transform: translateX(-50%) translateY(0);
 }
+
+/* 「更快域名」提醒条：仅在旧镜像（github.io / pages.dev）上显示，引导用户切到国内新地址 kids-study.cn */
+.faster-site {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: calc(8px + env(safe-area-inset-top)) 0 4px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 12px;
+  padding: 10px 12px;
+  box-shadow: 0 2px 12px rgba(192, 57, 43, 0.28);
+}
+.faster-site[hidden] {
+  display: none;
+}
+.faster-site-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: #fff;
+  text-decoration: none;
+  line-height: 1.35;
+}
+.faster-site-main strong {
+  font-size: 15px;
+}
+.faster-site-main span {
+  font-size: 13px;
+  opacity: 0.92;
+}
+.faster-site-close {
+  flex: none;
+  align-self: flex-start;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+.faster-site-close:hover {
+  background: rgba(255, 255, 255, 0.3);
+}

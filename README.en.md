@@ -2,7 +2,7 @@
 
 > Offline Chinese stroke-order lookup PWA — paste a paragraph, tap any character to see its stroke order animated
 
-[中文](./README.md) | **Live demo: https://dezhaohe.github.io/bishun/**
+[中文](./README.md) | **Live demo: https://kids-study.cn/** (fast in mainland China) · mirror: https://dezhaohe.github.io/bishun/
 
 <p align="center">
   <img src="docs/screenshot-main.png" width="260" alt="Paste a paragraph, tap any character" />
@@ -26,7 +26,7 @@ Unlike stroke-order websites that require one online query per character, this t
 
 ## 📱 Install on your phone
 
-1. Open https://dezhaohe.github.io/bishun/ in your mobile browser
+1. Open https://kids-study.cn/ in your mobile browser (mirror: https://dezhaohe.github.io/bishun/)
 2. Tap **Settings ⚙ → Add to Home Screen** in the app: on iOS it walks you through Safari's share menu; on Android it detects your phone's brand (Xiaomi/OPPO/vivo/Huawei/Samsung/…) and shows menu steps for its default browser
 3. Launch from the home-screen icon — works without a network connection (do the first visit on Wi-Fi)
 
