@@ -579,3 +579,22 @@ body {
 .faster-site-close:hover {
   background: rgba(255, 255, 255, 0.3);
 }
+
+/* ICP 备案号页脚：仅在已备案的 kids-study.cn 上展示（见 main.ts 的 onFast 判断） */
+.site-footer {
+  margin-top: 32px;
+  padding: 16px 0 calc(10px + env(safe-area-inset-bottom));
+  text-align: center;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.site-footer[hidden] {
+  display: none;
+}
+.site-footer a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.site-footer a:hover {
+  text-decoration: underline;
+}

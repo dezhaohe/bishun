@@ -173,6 +173,10 @@ app.innerHTML = `
     <p id="quiz-hint" class="setting-hint" hidden>沿着灰色轮廓逐笔描写，写错会提示重画</p>
   </div>
 
+  <footer id="site-footer" class="site-footer" hidden>
+    <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">粤ICP备2026112499号-1</a>
+  </footer>
+
   <div id="feedback-page" class="settings-page feedback-page" hidden>
     <div class="settings-inner">
       <header class="settings-header">
@@ -260,6 +264,12 @@ quizToggle.checked = settings.quizEnabled;
         /* 隐私模式下 localStorage 可能不可用，忽略即可 */
       }
     });
+  }
+
+  // ICP 备案号仅在已备案的 kids-study.cn 上展示；github.io / pages.dev / 本地等非备案域名不显示，避免不合规
+  if (onFast) {
+    const footer = document.getElementById('site-footer');
+    if (footer) footer.hidden = false;
   }
 }
 
