@@ -703,7 +703,7 @@ function showDetail(ch: string, opts: { scroll?: boolean } = {}) {
   $('#radical-info').textContent = rad?.radical ? `部首：${rad.radical} · ${rad.struct}` : '';
   $('#stroke-names').textContent = names.length ? `笔顺：${names.join(' → ')}` : '';
 
-  speakBtn.hidden = voiceSyllable(ch) === null; // 粤语字等没有普通话拼音录音的字不显示 🔊
+  speakBtn.hidden = voiceSyllables(ch).length === 0; // 粤语字等没有普通话拼音录音的字不显示 🔊
   quizBtn.hidden = !settings.quizEnabled;
   quizHint.hidden = true;
   createWriter();
@@ -782,7 +782,7 @@ quizBtn.addEventListener('click', () => {
 // ---------- 拼音读音（真人录音，按需下载） ----------
 // 录音来自 cnchar-data（scripts/fetch-voice.mjs 构建时取出），一个「拼音+声调」一个 mp3，
 // 每个约 8KB。不预缓存：点到哪个字才下载哪个音，Service Worker 顺带缓存，之后离线也能读。
-// 多音字读页面上显示的第一个读音。
+// 多音字按页面显示的顺序把每个读音依次读一遍。
 const TONE_MARKS: Record<string, [string, number]> = {
   ā: ['a', 1], á: ['a', 2], ǎ: ['a', 3], à: ['a', 4],
   ē: ['e', 1], é: ['e', 2], ě: ['e', 3], è: ['e', 4],
@@ -793,19 +793,11 @@ const TONE_MARKS: Record<string, [string, number]> = {
   ń: ['n', 2], ň: ['n', 3], ǹ: ['n', 4],
 };
 
-// 「nǐ」→「ni3」，轻声记为 5（与录音文件名一致）；读不出拼音的字返回 null
-function voiceSyllable(ch: string): string | null {
-  let first: string;
-  try {
-    first = (cnchar.spell(ch, 'array', 'tone', 'poly', 'low') as string[])[0];
-  } catch {
-    return null;
-  }
-  if (!first || first === ch) return null;
-  first = first.replace(/[()]/g, '').split('|')[0];
+// 「nǐ」→「ni3」，轻声记为 5（与录音文件名一致）；无法识别的拼音返回 null
+function toSyllable(pinyin: string): string | null {
   let base = '';
   let tone = 5;
-  for (const c of first) {
+  for (const c of pinyin) {
     const m = TONE_MARKS[c];
     if (m) {
       base += m[0];
@@ -816,17 +808,33 @@ function voiceSyllable(ch: string): string | null {
   return /^[a-z]+[1-5]$/.test(syl) ? syl : null;
 }
 
+// 字的全部读音（多音字按页面显示顺序，去重）；读不出拼音的字返回空数组
+function voiceSyllables(ch: string): string[] {
+  let spell: string;
+  try {
+    spell = (cnchar.spell(ch, 'array', 'tone', 'poly', 'low') as string[])[0];
+  } catch {
+    return [];
+  }
+  if (!spell || spell === ch) return [];
+  const syls = spell.replace(/[()]/g, '').split('|').map(toSyllable);
+  return [...new Set(syls.filter((x): x is string => x !== null))];
+}
+
 const voiceAudio = new Audio();
 const voiceWarmed = new Set<string>();
+const VOICE_GAP = 350; // 多音字相邻两个读音之间的停顿（毫秒）
+let voiceQueue: string[] = [];
+let voiceManual = false;
+let voiceGapTimer: number | undefined;
 
-// manual：用户主动点 🔊 时，失败要给提示；自动朗读失败则静默，不打扰
-function speak(ch: string, manual = false) {
-  const syl = voiceSyllable(ch);
-  if (!syl) return;
+function playVoice(syl: string) {
   const url = dataUrl(`voice/${syl}.mp3`);
   voiceAudio.src = url;
   voiceAudio.play().catch((e: DOMException) => {
-    if (manual && e.name !== 'AbortError') showToast('读音加载失败，联网后再试');
+    if (e.name === 'AbortError') return; // 被下一次点击打断，正常
+    if (voiceManual) showToast('读音加载失败，联网后再试');
+    voiceQueue = []; // 断网等失败时不再继续读后面的音
   });
   // 播放器取音频用分段请求（Range），Service Worker 存不下完整文件；
   // 另发一次普通请求让 SW 缓存完整录音，之后断网也能读
@@ -834,6 +842,23 @@ function speak(ch: string, manual = false) {
     voiceWarmed.add(syl);
     fetch(url).catch(() => voiceWarmed.delete(syl));
   }
+}
+
+// 一个读音播完，停顿一下接着读下一个（同一个 audio 元素，首次播放由点击触发，iOS 允许后续续播）
+voiceAudio.addEventListener('ended', () => {
+  const next = voiceQueue.shift();
+  if (next) voiceGapTimer = window.setTimeout(() => playVoice(next), VOICE_GAP);
+});
+
+// 依次读出字的全部读音（多音字逐个读）；再次调用会打断正在读的。
+// manual：用户主动点 🔊 时，失败要给提示；自动朗读失败则静默，不打扰
+function speak(ch: string, manual = false) {
+  clearTimeout(voiceGapTimer);
+  const [first, ...rest] = voiceSyllables(ch);
+  voiceQueue = rest;
+  voiceManual = manual;
+  if (first) playVoice(first); // 第一个音在点击处理里同步发起，iOS 才放行
+  else voiceAudio.pause();
 }
 
 speakBtn.addEventListener('click', () => speak(currentChar, true));
