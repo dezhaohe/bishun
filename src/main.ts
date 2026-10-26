@@ -20,12 +20,13 @@ const SETTINGS_KEY = 'bishun-settings';
 interface Settings {
   quizEnabled: boolean;
   speed: number; // 动画速度倍率
+  autoSpeak: boolean; // 点字时自动朗读拼音
 }
 function loadSettings(): Settings {
   try {
-    return { quizEnabled: false, speed: 0.75, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
+    return { quizEnabled: false, speed: 0.75, autoSpeak: true, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}') };
   } catch {
-    return { quizEnabled: false, speed: 0.75 };
+    return { quizEnabled: false, speed: 0.75, autoSpeak: true };
   }
 }
 function saveSettings(s: Settings) {
@@ -103,6 +104,13 @@ app.innerHTML = `
       </label>
       <label class="setting-item">
         <span class="setting-label">
+          <span>点字朗读拼音</span>
+          <small>点开字卡时读出拼音；关掉后仍可点 🔊 收听</small>
+        </span>
+        <input type="checkbox" id="speak-toggle" />
+      </label>
+      <label class="setting-item">
+        <span class="setting-label">
           <span>笔顺动画速度</span>
           <small>默认 ×0.75</small>
         </span>
@@ -131,7 +139,7 @@ app.innerHTML = `
       <div class="setting-item about-text">
         <span class="setting-label">
           <span>笔顺随身查</span>
-          <small>离线汉字笔顺查询工具。输入一段话，点任意字查看笔顺动画、拼音、笔画和部首结构；支持描红练习。基础字库覆盖《通用规范汉字表》常用字，繁体、粤语和生僻字可按需下载；首次打开后断网也能用，建议添加到主屏幕当作 App 使用。</small>
+          <small>离线汉字笔顺查询工具。输入一段话，点任意字查看笔顺动画、拼音（可朗读）、笔画和部首结构；支持描红练习。基础字库覆盖《通用规范汉字表》常用字，繁体、粤语和生僻字可按需下载；首次打开后断网也能用，建议添加到主屏幕当作 App 使用。</small>
         </span>
       </div>
       <a class="setting-item setting-action" href="https://github.com/dezhaohe/bishun" target="_blank" rel="noopener">
@@ -160,6 +168,7 @@ app.innerHTML = `
     <div class="detail-head">
       <div class="detail-info">
         <span id="detail-pinyin" class="pinyin"></span>
+        <button id="speak-btn" class="speak-btn" type="button" aria-label="朗读读音" title="朗读读音" hidden>🔊</button>
         <span id="detail-count" class="stroke-count"></span>
       </div>
       <button id="detail-close" class="icon-btn" aria-label="关闭">✕</button>
@@ -231,6 +240,8 @@ const emptyHint = $('#empty-hint');
 const detail = $('#detail');
 const loading = $('#loading');
 const quizToggle = $<HTMLInputElement>('#quiz-toggle');
+const speakToggle = $<HTMLInputElement>('#speak-toggle');
+const speakBtn = $<HTMLButtonElement>('#speak-btn');
 const quizBtn = $<HTMLButtonElement>('#quiz-btn');
 const quizHint = $('#quiz-hint');
 const speedSelect = $<HTMLSelectElement>('#speed-select');
@@ -246,6 +257,7 @@ if (speedSelect.value !== String(settings.speed)) {
 // 抢占输入焦点，光标闪烁引导用户直接开始输入（innerHTML 插入的 autofocus 属性不会自动生效，需手动 focus）
 textInput.focus();
 quizToggle.checked = settings.quizEnabled;
+speakToggle.checked = settings.autoSpeak;
 
 // 「更快域名」提醒：仅在非 kids-study.cn 的旧镜像（github.io / pages.dev 等）上显示，
 // 引导加载慢 / 打不开 / 下不动字库的用户切到国内自托管的新地址；在 kids-study.cn 本站与本地开发时不显示。
@@ -437,6 +449,8 @@ function openChar(ch: string, card?: HTMLElement) {
   setInputLines(1); // 焦点落到字块区选中某字 → 输入框收成 1 行，让出空间
   centerSelectedCard(); // 选中行滚到字块区中间，方便点相邻行的下一个字
   showDetail(ch);
+  // 只在用户点字时朗读（输入时自动选中第一个字不发声）；在点击处理里同步发起播放，iOS 才放行
+  if (settings.autoSpeak) speak(ch);
 }
 
 function renderChars() {
@@ -689,6 +703,7 @@ function showDetail(ch: string, opts: { scroll?: boolean } = {}) {
   $('#radical-info').textContent = rad?.radical ? `部首：${rad.radical} · ${rad.struct}` : '';
   $('#stroke-names').textContent = names.length ? `笔顺：${names.join(' → ')}` : '';
 
+  speakBtn.hidden = voiceSyllable(ch) === null; // 粤语字等没有普通话拼音录音的字不显示 🔊
   quizBtn.hidden = !settings.quizEnabled;
   quizHint.hidden = true;
   createWriter();
@@ -764,6 +779,65 @@ quizBtn.addEventListener('click', () => {
   quizHint.textContent = '沿着灰色轮廓逐笔描写，写错会提示重画';
 });
 
+// ---------- 拼音读音（真人录音，按需下载） ----------
+// 录音来自 cnchar-data（scripts/fetch-voice.mjs 构建时取出），一个「拼音+声调」一个 mp3，
+// 每个约 8KB。不预缓存：点到哪个字才下载哪个音，Service Worker 顺带缓存，之后离线也能读。
+// 多音字读页面上显示的第一个读音。
+const TONE_MARKS: Record<string, [string, number]> = {
+  ā: ['a', 1], á: ['a', 2], ǎ: ['a', 3], à: ['a', 4],
+  ē: ['e', 1], é: ['e', 2], ě: ['e', 3], è: ['e', 4],
+  ī: ['i', 1], í: ['i', 2], ǐ: ['i', 3], ì: ['i', 4],
+  ō: ['o', 1], ó: ['o', 2], ǒ: ['o', 3], ò: ['o', 4],
+  ū: ['u', 1], ú: ['u', 2], ǔ: ['u', 3], ù: ['u', 4],
+  ǖ: ['v', 1], ǘ: ['v', 2], ǚ: ['v', 3], ǜ: ['v', 4], ü: ['v', 5],
+  ń: ['n', 2], ň: ['n', 3], ǹ: ['n', 4],
+};
+
+// 「nǐ」→「ni3」，轻声记为 5（与录音文件名一致）；读不出拼音的字返回 null
+function voiceSyllable(ch: string): string | null {
+  let first: string;
+  try {
+    first = (cnchar.spell(ch, 'array', 'tone', 'poly', 'low') as string[])[0];
+  } catch {
+    return null;
+  }
+  if (!first || first === ch) return null;
+  first = first.replace(/[()]/g, '').split('|')[0];
+  let base = '';
+  let tone = 5;
+  for (const c of first) {
+    const m = TONE_MARKS[c];
+    if (m) {
+      base += m[0];
+      if (m[1] !== 5) tone = m[1];
+    } else base += c;
+  }
+  const syl = base + tone;
+  return /^[a-z]+[1-5]$/.test(syl) ? syl : null;
+}
+
+const voiceAudio = new Audio();
+const voiceWarmed = new Set<string>();
+
+// manual：用户主动点 🔊 时，失败要给提示；自动朗读失败则静默，不打扰
+function speak(ch: string, manual = false) {
+  const syl = voiceSyllable(ch);
+  if (!syl) return;
+  const url = dataUrl(`voice/${syl}.mp3`);
+  voiceAudio.src = url;
+  voiceAudio.play().catch((e: DOMException) => {
+    if (manual && e.name !== 'AbortError') showToast('读音加载失败，联网后再试');
+  });
+  // 播放器取音频用分段请求（Range），Service Worker 存不下完整文件；
+  // 另发一次普通请求让 SW 缓存完整录音，之后断网也能读
+  if (!voiceWarmed.has(syl)) {
+    voiceWarmed.add(syl);
+    fetch(url).catch(() => voiceWarmed.delete(syl));
+  }
+}
+
+speakBtn.addEventListener('click', () => speak(currentChar, true));
+
 // ---------- 设置（独立全屏页，避免与主界面耦合） ----------
 $('#settings-btn').addEventListener('click', () => {
   $('#settings-panel').hidden = false;
@@ -771,6 +845,11 @@ $('#settings-btn').addEventListener('click', () => {
 $('#settings-back').addEventListener('click', () => {
   $('#settings-panel').hidden = true;
 });
+speakToggle.addEventListener('change', () => {
+  settings.autoSpeak = speakToggle.checked;
+  saveSettings(settings);
+});
+
 quizToggle.addEventListener('change', () => {
   settings.quizEnabled = quizToggle.checked;
   saveSettings(settings);

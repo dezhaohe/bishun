@@ -369,6 +369,28 @@ body {
   font-size: 20px;
   font-weight: 600;
 }
+.speak-btn {
+  position: relative;
+  align-self: center;
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+}
+.speak-btn::before {
+  /* 图标约 24px，把可点击区域撑到 44×44 */
+  content: '';
+  position: absolute;
+  inset: -10px;
+}
+.speak-btn:active {
+  transform: scale(0.9);
+}
+.speak-btn[hidden] {
+  display: none;
+}
 .stroke-count {
   color: var(--muted);
   font-size: 14px;

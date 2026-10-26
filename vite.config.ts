@@ -57,6 +57,18 @@ export default defineConfig({
             },
           },
           {
+            // 拼音录音（按需，每个约 8KB）：缓存优先，听过的字断网也能读。
+            // 播放器用 Range 分段请求，rangeRequests 让 SW 从缓存的完整文件里切片返回（iOS Safari 必需）；
+            // 完整文件由页面另发的普通请求写入缓存（见 main.ts 的 speak）
+            urlPattern: /\/data\/voice\/.*\.mp3$/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'bishun-voice',
+              rangeRequests: true,
+              cacheableResponse: { statuses: [200] },
+            },
+          },
+          {
             // 字表索引与演示 GIF：体积很小，用 SWR 顺带自动更新，无需版本号
             urlPattern: /(trad-index\.json|demo-bi\.gif)/,
             handler: 'StaleWhileRevalidate',

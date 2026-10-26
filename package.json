@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "predev": "node scripts/build-data.mjs",
+    "predev": "node scripts/build-data.mjs && node scripts/fetch-voice.mjs",
     "dev": "vite",
-    "prebuild": "node scripts/build-data.mjs",
+    "prebuild": "node scripts/build-data.mjs && node scripts/fetch-voice.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "deploy": "npm run build && cd dist && git init -q -b gh-pages && git add -A && git -c user.name=dezhaohe -c user.email=dezhaohe@users.noreply.github.com commit -q -m deploy && git -c http.postBuffer=524288000 push --force git@github.com:dezhaohe/bishun.git gh-pages && cd .. && rm -rf dist/.git",

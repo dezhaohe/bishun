@@ -18,6 +18,7 @@
 - **首次使用演示**：还没输入过内容的用户会在空白区域看到"笔"字笔顺 GIF（播放一遍，`scripts/make-demo-gif.mjs` 预渲染，与应用内 HanziWriter 实时渲染相互独立），教新用户"点字看笔顺"；开始输入后不再出现
 - **笔顺动画**：米字格中循环演示，部首标红，速度 ×0.5 / ×1 / ×1.5 可调
 - **汉字信息**：拼音（含多音字）、笔画数、部首、字形结构（左右/上下/包围…）、笔顺名称（横 → 竖 → 撇 …）
+- **拼音朗读**：点字即读出拼音（真人录音，多音字读第一个读音），拼音旁 🔊 可重听；录音按需下载、每个约 8KB，听过的字断网也能读；设置里可关闭自动朗读
 - **描红练习**：可选开启（设置 ⚙ 中），手指沿轮廓逐笔描写，写错提示重画
 - **完全离线**：Service Worker 预缓存约 20MB 笔顺数据（gzip 传输约 8MB，仅首次下载）
 - **字库**：《通用规范汉字表》8105 字中有笔顺数据的 6866 字，覆盖日常文本 99.9% 以上
@@ -62,6 +63,7 @@ Fork 本仓库后想部署到自己的 GitHub Pages：把 `package.json` 里 `de
 │   ├── gsc-chars.json      # 《通用规范汉字表》8105 字
 │   ├── build-data.mjs      # 构建时从 hanzi-writer-data 提取合并笔顺数据
 │   ├── canto.mjs           # 合成粤语字笔顺数据（开源数据源未覆盖）
+│   ├── fetch-voice.mjs     # 构建时下载拼音读音录音（cnchar-data）
 │   ├── make-demo-gif.mjs   # 生成首次使用演示 GIF（public/demo-bi.gif）
 │   └── shoot.mjs           # 生成 README 截图
 ├── public/                 # 图标、演示 GIF 等静态资源（data/ 为生成产物，不入库）
@@ -81,6 +83,7 @@ CHAR_LIMIT=3500 npm run build
 | [Hanzi Writer](https://github.com/chanind/hanzi-writer) | 笔顺动画与描红渲染 | MIT |
 | [hanzi-writer-data](https://github.com/chanind/hanzi-writer-data) / [Make Me a Hanzi](https://github.com/skishore/makemeahanzi) | 笔顺 SVG 数据 | [Arphic Public License](./ARPHICPL.TXT) |
 | [cnchar](https://github.com/theajack/cnchar) | 拼音 / 笔画名 / 部首 / 结构 | MIT |
+| [cnchar-data](https://github.com/cn-char/cnchar-data) | 拼音读音录音（构建时由 `scripts/fetch-voice.mjs` 下载） | MIT |
 | [通用规范汉字表](https://github.com/jaywcjlove/table-of-general-standard-chinese-characters) | 字表 | MIT |
 
 ## 📄 许可

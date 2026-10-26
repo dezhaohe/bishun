@@ -18,6 +18,7 @@ Unlike stroke-order websites that require one online query per character, this t
 - **First-use demo**: until you type something for the first time, a tiny GIF of "笔" being drawn (plays once; pre-rendered by `scripts/make-demo-gif.mjs`, fully independent from the app's live HanziWriter rendering) appears in the blank area to teach new users "tap a character to see its stroke order"
 - **Stroke-order animation**: looping demo in a practice grid, radical highlighted in red, speed ×0.5 / ×1 / ×1.5
 - **Character info**: pinyin (incl. polyphones), stroke count, radical, structure (left-right / top-bottom / enclosure…), stroke names
+- **Pinyin audio**: tapping a character reads its pinyin aloud (human recordings; polyphones use the first reading), with a 🔊 button to replay; recordings (~8KB each) download on demand and work offline once heard; auto-play can be turned off in Settings
 - **Tracing practice** (optional, off by default): trace each stroke with your finger; wrong strokes prompt a retry
 - **Fully offline**: the Service Worker precaches ~20MB of stroke data (~8MB gzipped, downloaded once)
 - **Coverage**: 6,866 of the 8,105 characters in China's Table of General Standard Chinese Characters — >99.9% of everyday text
@@ -64,6 +65,7 @@ CHAR_LIMIT=3500 npm run build
 | [Hanzi Writer](https://github.com/chanind/hanzi-writer) | stroke animation & quiz rendering | MIT |
 | [hanzi-writer-data](https://github.com/chanind/hanzi-writer-data) / [Make Me a Hanzi](https://github.com/skishore/makemeahanzi) | stroke SVG data | [Arphic Public License](./ARPHICPL.TXT) |
 | [cnchar](https://github.com/theajack/cnchar) | pinyin / stroke names / radical / structure | MIT |
+| [cnchar-data](https://github.com/cn-char/cnchar-data) | pinyin audio recordings (downloaded at build time by `scripts/fetch-voice.mjs`) | MIT |
 | [Table of General Standard Chinese Characters](https://github.com/jaywcjlove/table-of-general-standard-chinese-characters) | character table | MIT |
 
 ## 📄 License
