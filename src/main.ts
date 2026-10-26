@@ -221,6 +221,7 @@ app.innerHTML = `
 const $ = <T extends HTMLElement>(sel: string) => document.querySelector<T>(sel)!;
 const textInput = $<HTMLTextAreaElement>('#text-input');
 const clearBtn = $<HTMLButtonElement>('#clear-btn');
+const inputArea = $('.input-area');
 const charCount = $('#char-count');
 const charGrid = $('#char-grid');
 const emptyHint = $('#empty-hint');
@@ -555,9 +556,18 @@ function setInputLines(n: number) {
   textInput.style.overflowY = 'auto'; // 内容超过当前行数时可在框内滚动
 }
 
-// 有内容时才显示清除按钮，空白态不干扰
+// 清除钮两种形态：有内容时是 ✕（清除）；刚清除完、还没输入新内容时变成「↶ 撤销」，
+// 防止误触清空后找不回原文。开始输入新内容即放弃撤销，变回 ✕。
+let undoText: string | null = null;
 function syncClearBtn() {
-  clearBtn.hidden = textInput.value.length === 0;
+  const undoing = textInput.value.length === 0 && undoText !== null;
+  clearBtn.hidden = textInput.value.length === 0 && !undoing;
+  clearBtn.classList.toggle('undo', undoing);
+  inputArea.classList.toggle('undoing', undoing);
+  clearBtn.textContent = undoing ? '↶ 撤销' : '✕';
+  const label = undoing ? '撤销清除' : '清除输入';
+  clearBtn.setAttribute('aria-label', label);
+  clearBtn.title = label;
 }
 
 // 字数统计：中文字、标点、字母数字等所有非空白字符都计入（与展示的字块一一对应）
@@ -572,21 +582,31 @@ let renderTimer: number | undefined;
 textInput.addEventListener('focus', () => setInputLines(3)); // 切回输入框 → 展开 3 行
 textInput.addEventListener('input', () => {
   hideDemo(); // 一开始打字就收起首次演示，不用等 debounce
+  if (textInput.value) undoText = null; // 输入了新内容，放弃撤销
   syncClearBtn();
   syncCharCount();
   clearTimeout(renderTimer);
   renderTimer = window.setTimeout(renderChars, 200);
 });
 
-// 清除：清空全部文字，光标回到最前面等待下次输入（focus 会顺带把输入框展开回 3 行）
+// 清除：清空全部文字，光标回到最前面等待下次输入（focus 会顺带把输入框展开回 3 行）；
+// 原文暂存，按钮原地变成「撤销」，点一下即可恢复
 clearBtn.addEventListener('click', () => {
-  textInput.value = '';
+  const restoring = undoText !== null && textInput.value.length === 0;
+  if (restoring) {
+    textInput.value = undoText!;
+    undoText = null;
+  } else {
+    undoText = textInput.value;
+    textInput.value = '';
+  }
   syncClearBtn();
   syncCharCount();
   textInput.focus();
   setInputLines(3);
-  textInput.setSelectionRange(0, 0);
-  renderChars(); // 立即回到空白态并重新展示演示，不等 debounce
+  const caret = restoring ? textInput.value.length : 0; // 恢复后光标放到末尾，方便接着输入
+  textInput.setSelectionRange(caret, caret);
+  renderChars(); // 立即刷新字块（恢复原字块，或回到空白态并展示演示），不等 debounce
 });
 
 // 初始化：autofocus 让输入框处于聚焦态，据此展开 3 行；并按预填内容（?q=）刷新清除钮与字数

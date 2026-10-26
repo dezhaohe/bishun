@@ -253,6 +253,19 @@ body {
 .clear-btn[hidden] {
   display: none;
 }
+/* 撤销形态：带文字的胶囊钮，比 ✕ 更显眼，一眼能看出可以恢复 */
+.clear-btn.undo {
+  width: auto;
+  padding: 0 11px;
+  border-radius: 15px;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+/* 撤销钮比 ✕ 宽，给占位文字多让出右侧空间，避免被盖住 */
+.input-area.undoing textarea {
+  padding-right: 92px;
+}
 .input-area textarea::placeholder {
   /* 比正文更淡，一眼能分辨是提示语而不是已填内容 */
   color: #c1b9ae;
