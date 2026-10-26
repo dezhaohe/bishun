@@ -43,6 +43,9 @@ let coreReady = false; // 核心包是否就绪（决定清空输入后是否重
 declare const __CORE_BYTES__: number;
 declare const __MORE_BYTES__: number;
 const TRAD_KEY = 'bishun-trad-downloaded';
+// 输入草稿：本地暂存，10 分钟内重开页面可恢复（见「输入草稿」一节）
+const DRAFT_KEY = 'bishun-draft';
+const DRAFT_TTL = 10 * 60 * 1000;
 let writer: HanziWriter | null = null;
 let currentChar = '';
 let quizMode = false;
@@ -343,9 +346,11 @@ function renderLoadingProgress() {
 // 首屏立即显示演示 GIF：GIF 仅 11KB，而核心字库有 2MB 级，绝不能让
 // 字库下载阻塞演示动画的显示。二者并行，互不阻塞——演示先出现，字库在后台下载。
 // 这里同步读取 ?q= 预填参数（可分享带内容的链接），据此决定是否展示演示。
+// 没有 ?q= 时，恢复 10 分钟内的草稿（不小心关掉页面再打开，输入内容还在）。
 {
   const q = new URLSearchParams(location.search).get('q');
   if (q && !textInput.value) textInput.value = q;
+  else if (!textInput.value) textInput.value = loadDraft();
   if (!textInput.value) showDemo();
 }
 
@@ -578,12 +583,45 @@ function syncCharCount() {
   charCount.textContent = `${n} 字`;
 }
 
+// ---------- 输入草稿（本地暂存，10 分钟内重开页面可恢复） ----------
+// 记录内容和「最后活跃时间」：每次输入、清除/撤销、切走或关闭页面都刷新时间，
+// 重新打开时距最后活跃不超过 10 分钟才恢复，过期即丢弃。
+function saveDraft() {
+  try {
+    if (textInput.value) {
+      localStorage.setItem(DRAFT_KEY, JSON.stringify({ text: textInput.value, at: Date.now() }));
+    } else {
+      localStorage.removeItem(DRAFT_KEY);
+    }
+  } catch {
+    /* 隐私模式下 localStorage 可能不可用，忽略即可 */
+  }
+}
+
+function loadDraft(): string {
+  try {
+    const d = JSON.parse(localStorage.getItem(DRAFT_KEY) || 'null') as { text?: unknown; at?: unknown } | null;
+    if (d && typeof d.text === 'string' && typeof d.at === 'number' && Date.now() - d.at <= DRAFT_TTL) return d.text;
+    localStorage.removeItem(DRAFT_KEY);
+  } catch {
+    /* 存档损坏或 localStorage 不可用，当作没有草稿 */
+  }
+  return '';
+}
+
+// 切到后台 / 关闭页面时刷新最后活跃时间（移动端关标签页通常只触发 visibilitychange）
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') saveDraft();
+});
+window.addEventListener('pagehide', saveDraft);
+
 let renderTimer: number | undefined;
 textInput.addEventListener('focus', () => setInputLines(3)); // 切回输入框 → 展开 3 行
 textInput.addEventListener('input', () => {
   hideDemo(); // 一开始打字就收起首次演示，不用等 debounce
   if (textInput.value) undoText = null; // 输入了新内容，放弃撤销
   syncClearBtn();
+  saveDraft();
   syncCharCount();
   clearTimeout(renderTimer);
   renderTimer = window.setTimeout(renderChars, 200);
@@ -602,6 +640,7 @@ clearBtn.addEventListener('click', () => {
   }
   syncClearBtn();
   syncCharCount();
+  saveDraft();
   textInput.focus();
   setInputLines(3);
   const caret = restoring ? textInput.value.length : 0; // 恢复后光标放到末尾，方便接着输入
